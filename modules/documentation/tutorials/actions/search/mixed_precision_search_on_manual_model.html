@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mixed-precision search on Manual model &mdash; MASE 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../../../_static/documentation_options.js?v=d45e8c67"></script>
+        <script src="../../../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="How to extend search" href="how_to_extend_search.html" />
+    <link rel="prev" title="Mixed-precision search on MASE Graph" href="mixed_precision_search_on_mase_graph.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../../index.html" class="icon icon-home">
+            MASE
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../../tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../train/simple_train_flow.html">Train command</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../transform/cli_transform.html">Run the transform action with the CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mixed_precision_search_on_mase_graph.html">Mixed-precision search on MASE Graph</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Mixed-precision search on Manual model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#search-for-mixed-precision-quantization-strategy">Search for mixed-precision quantization strategy</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#search-config">Search config</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="how_to_extend_search.html">How to extend search</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to_extend_search.html#how-to-extend-search-strategy">How to extend search_strategy?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../stat_to_config.html">How to use the Statistics Pass Combined with the Ternary Quantiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../accelerate_fsdp.html">Accelerate FSDP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../Add-model-to-machop.html">Guide on how to add a new model into Machop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../doc_writing.html">How to write documentations in MASE</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../roadmap.html">Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../specifications.html">Coding Style Specifications</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/actions.html">Chop Actions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/passes.html">Chop Passes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/ir.html">IR</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Students</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../labs.html">Advanced Deep Learning Systems Labs</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../index.html">MASE</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../tutorials.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Mixed-precision search on Manual model</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../../../_sources/modules/documentation/tutorials/actions/search/mixed_precision_search_on_manual_model.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mixed-precision-search-on-manual-model">
+<h1>Mixed-precision search on Manual model<a class="headerlink" href="#mixed-precision-search-on-manual-model" title="Link to this heading"></a></h1>
+<p>This tutorial shows how to search for mixed-precision quantization strategy for OPT_quantized model on Wikitext2 dataset.</p>
+<blockquote>
+<div><p><strong>Note</strong>: Manual model refers to the model named as <code class="docutils literal notranslate"><span class="pre">&lt;model_arch&gt;_quantized</span></code> at <code class="docutils literal notranslate"><span class="pre">mase-tools/machop/chop/models/manual</span></code>. Usually these are models that cannot be directly converted to MASE Graph.</p>
+</div></blockquote>
+<section id="search-for-mixed-precision-quantization-strategy">
+<h2>Search for mixed-precision quantization strategy<a class="headerlink" href="#search-for-mixed-precision-quantization-strategy" title="Link to this heading"></a></h2>
+<p>We load the HuggingFace checkpoint “facebook/opt-125m” and search for fixed-point precision on Wikitext2 dataset.</p>
+<section id="search-config">
+<h3>Search config<a class="headerlink" href="#search-config" title="Link to this heading"></a></h3>
+<p>Here is the search part in <code class="docutils literal notranslate"><span class="pre">configs/examples/search_opt_quantized_tpe_search.toml</span></code> looks like the following.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[search.search_space]</span>
+<span class="c1"># the search space name defined in mase</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;module/manual_hf/quantize/llm_mixed_precision_ptq&quot;</span>
+
+<span class="k">[search.search_space.setup]</span>
+<span class="c1"># disable model parallel since we are using a small model</span>
+<span class="n">model_parallel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+
+<span class="k">[search.search_space.seed.default]</span>
+<span class="c1"># Since we are doing mixed-precision search.</span>
+<span class="c1"># Only one &quot;name&quot; is supported (len(name) == 1)</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;integer&quot;</span><span class="p">]</span>
+<span class="n">data_in_width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">]</span>
+<span class="n">data_in_frac_width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">]</span>
+<span class="n">weight_width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">]</span>
+<span class="n">weight_frac_width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">]</span>
+<span class="n">bias_width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">]</span>
+<span class="n">bias_frac_width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">]</span>
+
+<span class="k">[search.strategy]</span>
+<span class="c1"># Optuna supports a range of search algorithms, including Random, TPE, Genetic, etc.</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;optuna&quot;</span>
+<span class="n">sw_runner</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;basic_evaluation&quot;</span><span class="w"> </span><span class="c1"># sw_runner specifies the estimator for sw metrics</span>
+<span class="n">hw_runner</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;average_bitwidth&quot;</span><span class="w"> </span><span class="c1"># hw_runner specifies the estimator for hw metrics</span>
+<span class="n">eval_mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">data_loader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;val_dataloader&quot;</span>
+<span class="n">num_samples</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">16</span>
+
+<span class="k">[search.strategy.setup]</span>
+<span class="n">n_jobs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="n">n_trials</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+<span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">20000</span>
+<span class="n">sampler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;TPE&quot;</span>
+<span class="n">model_parallel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">runner_style</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lm&quot;</span>
+<span class="n">sum_scaled_metrics</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+
+<span class="k">[search.strategy.metrics]</span>
+<span class="n">perplexity</span><span class="p">.</span><span class="n">scale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span>
+<span class="n">perplexity</span><span class="p">.</span><span class="n">direction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;minimize&quot;</span>
+<span class="c1"># we set `average_bitwidth.scale = 0.0` to disable the hw metric,</span>
+<span class="c1"># since currently (commit bb44d2cf255fae54ecb6697b0fe23c595197babf) the bitwidth estimation only profiles linear layers</span>
+<span class="n">average_bitwidth</span><span class="p">.</span><span class="n">scale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span>
+<span class="n">average_bitwidth</span><span class="p">.</span><span class="n">direction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;minimize&quot;</span>
+</pre></div>
+</div>
+<p>Run the search:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>machop
+./ch<span class="w"> </span>search<span class="w"> </span>--config<span class="w"> </span>configs/examples/search_opt_quantized_tpe_search.toml
+</pre></div>
+</div>
+<p>When the search is done, the best quantization config will be printed out:</p>
+<div class="highlight-txt notranslate"><div class="highlight"><pre><span></span>Best trial(s):
+|    |   number | software_metrics                     | hardware_metrics            | scaled_metrics                                   |
+|----+----------+--------------------------------------+-----------------------------+--------------------------------------------------|
+|  0 |        9 | {&#39;loss&#39;: 9.6, &#39;perplexity&#39;: 144.111} | {&#39;average_bitwidth&#39;: 5.556} | {&#39;average_bitwidth&#39;: 0.0, &#39;perplexity&#39;: 144.111} |
+</pre></div>
+</div>
+<p>The complete search results will be saved in <code class="docutils literal notranslate"><span class="pre">mase_tools/mase_output/opt_quantized_wikitext2/software/search_ckpts/log.json</span></code>.</p>
+<p>Here is part of the <code class="docutils literal notranslate"><span class="pre">log.json</span></code></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;0&quot;</span><span class="p">:{</span>
+<span class="w">        </span><span class="nt">&quot;number&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;values_0&quot;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;values_1&quot;</span><span class="p">:</span><span class="mf">0.7849056604</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;user_attrs_hardware_metrics&quot;</span><span class="p">:{</span>
+<span class="w">            </span><span class="nt">&quot;average_bitwidth&quot;</span><span class="p">:</span><span class="mf">3.9245283019</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;user_attrs_sampled_config&quot;</span><span class="p">:{</span>
+<span class="w">            </span><span class="nt">&quot;seq_blocks_0&quot;</span><span class="p">:{</span>
+<span class="w">                </span><span class="nt">&quot;config&quot;</span><span class="p">:{</span>
+<span class="w">                    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;data_in_width&quot;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;data_in_frac_width&quot;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;weight_width&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;weight_frac_width&quot;</span><span class="p">:</span><span class="mi">8</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;bias_width&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;bias_frac_width&quot;</span><span class="p">:</span><span class="mi">8</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="err">...</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;user_attrs_scaled_metrics&quot;</span><span class="p">:{</span>
+<span class="w">            </span><span class="nt">&quot;accuracy&quot;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;average_bitwidth&quot;</span><span class="p">:</span><span class="mf">0.7849056604</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;user_attrs_software_metrics&quot;</span><span class="p">:{</span>
+<span class="w">            </span><span class="nt">&quot;loss&quot;</span><span class="p">:</span><span class="mf">0.6922941208</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;accuracy&quot;</span><span class="p">:</span><span class="mf">0.5</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="s2">&quot;COMPLETE&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;datetime_start&quot;</span><span class="p">:</span><span class="mi">1694095030315</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;datetime_complete&quot;</span><span class="p">:</span><span class="mi">1694095031289</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;duration&quot;</span><span class="p">:</span><span class="mi">974</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;1&quot;</span><span class="p">:{</span>
+<span class="w">        </span><span class="nt">&quot;number&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;values_0&quot;</span><span class="p">:</span><span class="mf">0.5747232437</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;values_1&quot;</span><span class="p">:</span><span class="mf">0.8150943396</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;user_attrs_hardware_metrics&quot;</span><span class="p">:{</span>
+<span class="w">            </span><span class="nt">&quot;average_bitwidth&quot;</span><span class="p">:</span><span class="mf">4.0754716981</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;user_attrs_sampled_config&quot;</span><span class="p">:{</span>
+<span class="w">            </span><span class="nt">&quot;seq_blocks_0&quot;</span><span class="p">:{</span>
+<span class="w">                </span><span class="nt">&quot;config&quot;</span><span class="p">:{</span>
+<span class="w">                    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;data_in_width&quot;</span><span class="p">:</span><span class="mi">8</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;data_in_frac_width&quot;</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;weight_width&quot;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;weight_frac_width&quot;</span><span class="p">:</span><span class="mi">7</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;bias_width&quot;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;bias_frac_width&quot;</span><span class="p">:</span><span class="mi">3</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="err">...</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;user_attrs_scaled_metrics&quot;</span><span class="p">:{</span>
+<span class="w">            </span><span class="nt">&quot;accuracy&quot;</span><span class="p">:</span><span class="mf">0.5747232437</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;average_bitwidth&quot;</span><span class="p">:</span><span class="mf">0.8150943396</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;user_attrs_software_metrics&quot;</span><span class="p">:{</span>
+<span class="w">            </span><span class="nt">&quot;loss&quot;</span><span class="p">:</span><span class="mf">0.6845972538</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;accuracy&quot;</span><span class="p">:</span><span class="mf">0.5747232437</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="s2">&quot;COMPLETE&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;datetime_start&quot;</span><span class="p">:</span><span class="mi">1694095031290</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;datetime_complete&quot;</span><span class="p">:</span><span class="mi">1694095032462</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;duration&quot;</span><span class="p">:</span><span class="mi">1172</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="err">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="mixed_precision_search_on_mase_graph.html" class="btn btn-neutral float-left" title="Mixed-precision search on MASE Graph" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="how_to_extend_search.html" class="btn btn-neutral float-right" title="How to extend search" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, DeepWok.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
