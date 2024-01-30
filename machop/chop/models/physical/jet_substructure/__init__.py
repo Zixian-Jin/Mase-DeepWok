@@ -108,7 +108,7 @@ class JSC_Zixian(nn.Module):
             nn.Linear(8, 8),  # 5
             nn.BatchNorm1d(8),  # 6
             nn.ReLU(8),  # 7
-            
+
             # 3rd LogicNets Layer
             nn.Linear(8, 5),  # 8
             nn.BatchNorm1d(5),  # 9
@@ -132,3 +132,6 @@ def get_jsc_tiny(info):
 
 def get_jsc_s(info):
     return JSC_S(info)
+
+def get_jsc_zixian(info):
+    return JSC_Zixian(info)
