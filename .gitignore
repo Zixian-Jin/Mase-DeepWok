@@ -12,7 +12,7 @@ vagrant/.vagrant/
 *data/
 /tb_summary/
 # *.sh
-/mase_output/
+#/mase_output/
 .devcontainer/
 *.ckpt
 *.pkl
