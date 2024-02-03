@@ -14,8 +14,8 @@ vagrant/.vagrant/
 # *.sh
 #/mase_output/
 .devcontainer/
-*.ckpt
-*.pkl
+#*.ckpt
+#*.pkl
 /machop/examples/**/cache/
 /machop/examples/**/ckpts/
 /machop/examples/**/data/
