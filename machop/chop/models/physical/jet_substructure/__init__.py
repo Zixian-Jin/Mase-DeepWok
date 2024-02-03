@@ -85,7 +85,7 @@ class JSC_S(nn.Module):
 
 class JSC_Zixian(nn.Module):
     def __init__(self, info):
-        super(JSC_Toy, self).__init__()
+        super(JSC_Zixian, self).__init__()
         self.seq_blocks = nn.Sequential(
             # 1st LogicNets Layer
             nn.BatchNorm1d(16),  # input_quant       # 0
