@@ -1,20 +1,20 @@
 {
     "0":{
-        "number":0,
+        "number":12,
         "value":[
-            0.5341784954,
+            0.5093861818,
             0.8
         ],
         "software_metrics":{
-            "loss":1.276918292,
-            "accuracy":0.5341784954
+            "loss":1.3084578514,
+            "accuracy":0.5093861818
         },
         "hardware_metrics":{
             "average_bitwidth":4.0,
             "memory_density":8.0
         },
         "scaled_metrics":{
-            "accuracy":0.5341784954,
+            "accuracy":0.5093861818,
             "average_bitwidth":0.8
         },
         "sampled_config":{
@@ -26,15 +26,55 @@
             "seq_blocks_2":{
                 "config":{
                     "name":"integer",
-                    "data_in_width":8,
+                    "data_in_width":4,
                     "data_in_frac_width":null,
                     "weight_width":4,
                     "weight_frac_width":null,
-                    "bias_width":2,
+                    "bias_width":8,
                     "bias_frac_width":null
                 }
             },
-            "seq_blocks_3":{
+            "seq_blocks_4":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_5":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_7":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_8":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_10":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_11":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_13":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_14":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_16":{
                 "config":{
                     "name":null
                 }
@@ -54,21 +94,21 @@
         }
     },
     "1":{
-        "number":3,
+        "number":13,
         "value":[
-            0.5307024121,
+            0.5023016334,
             0.4
         ],
         "software_metrics":{
-            "loss":1.2837474346,
-            "accuracy":0.5307024121
+            "loss":1.3145910501,
+            "accuracy":0.5023016334
         },
         "hardware_metrics":{
             "average_bitwidth":2.0,
             "memory_density":16.0
         },
         "scaled_metrics":{
-            "accuracy":0.5307024121,
+            "accuracy":0.5023016334,
             "average_bitwidth":0.4
         },
         "sampled_config":{
@@ -80,15 +120,55 @@
             "seq_blocks_2":{
                 "config":{
                     "name":"integer",
-                    "data_in_width":8,
+                    "data_in_width":4,
                     "data_in_frac_width":null,
                     "weight_width":2,
                     "weight_frac_width":null,
-                    "bias_width":2,
+                    "bias_width":8,
                     "bias_frac_width":null
                 }
             },
-            "seq_blocks_3":{
+            "seq_blocks_4":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_5":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_7":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_8":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_10":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_11":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_13":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_14":{
+                "config":{
+                    "name":null
+                }
+            },
+            "seq_blocks_16":{
                 "config":{
                     "name":null
                 }
