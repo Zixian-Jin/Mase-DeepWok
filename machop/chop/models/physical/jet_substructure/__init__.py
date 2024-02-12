@@ -99,19 +99,19 @@ class JSC_Zixian(nn.Module):
             nn.BatchNorm1d(16),  # 6
             nn.ReLU(16),  # 7
 
-            # 2nd LogicNets Layer
-            nn.Linear(16, 8),  # 5
-            nn.BatchNorm1d(8),  # 6
-            nn.ReLU(8),  # 7
-
-            # 2nd LogicNets Layer
-            nn.Linear(8, 8),  # 5
-            nn.BatchNorm1d(8),  # 6
-            nn.ReLU(8),  # 7
-
             # 3rd LogicNets Layer
-            nn.Linear(8, 5),  # 8
-            nn.BatchNorm1d(5),  # 9
+            nn.Linear(16, 8),  # 8
+            nn.BatchNorm1d(8),  # 9
+            nn.ReLU(8),  # 10
+
+            # 4th LogicNets Layer
+            nn.Linear(8, 8),  # 11
+            nn.BatchNorm1d(8),  # 12
+            nn.ReLU(8),  # 13
+
+            # 5th LogicNets Layer
+            nn.Linear(8, 5),  # 14
+            nn.BatchNorm1d(5),  # 15
             nn.ReLU(5),
         )
 
