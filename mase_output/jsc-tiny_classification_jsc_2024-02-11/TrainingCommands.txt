@@ -1,0 +1,4 @@
+!./ch train jsc-tiny jsc --max-epochs 20 --batch-size 128
+!./ch train jsc-tiny jsc --max-epochs 20 --batch-size 256
+!./ch train jsc-tiny jsc --max-epochs 20 --batch-size 512
+!./ch train jsc-tiny jsc --max-epochs 20 --batch-size 1024
