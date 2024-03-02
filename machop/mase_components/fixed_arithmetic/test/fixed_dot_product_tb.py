@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+# Manually add mase_cocotb to system path
+import sys
+p='/home/zixian/Mase-DeepWok/machop/'
+sys.path.append(p)
+###############################################
 # This script tests the fixed point dot product
 import logging
 
