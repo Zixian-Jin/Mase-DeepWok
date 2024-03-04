@@ -37,7 +37,7 @@ module gather #(
 //   );
 
     // Assumes that if a large number occurs at the first row, then the rest entries in that column are all large numbers
-    for (genvar j = 0; j < IN_SIZE; j = j + 1) begin: ROW 
+    for (genvar j = 0; j < IN_SIZE; j = j + 1) begin: COL
         fp16_comparator #(
             .THRES(THRES)
         ) fp16_comp_inst(

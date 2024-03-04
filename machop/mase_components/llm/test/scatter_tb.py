@@ -32,6 +32,7 @@ class VerificationCase:
         self.in_rows = 2000
         self.in_columns = 4
         self.iterations = 1
+        self.out_large_columns = 1
         
         self.data_in = RandomSource(
             name="data_in",
@@ -42,11 +43,20 @@ class VerificationCase:
             arithmetic="llm-fp16"
         )
         
-        self.outputs = RandomSink(samples=samples, max_stalls=0, debug=debug)
+        self.ind_table = RandomSource(
+            name="data_in",
+            samples=samples * self.iterations,
+            num=self.in_rows * self.in_columns,
+            max_stalls=0,
+            debug=debug,
+            arithmetic="binary"
+        )
+        
+        self.outputs = RandomSink(samples=samples, max_stalls=0, debug=debug) # currently only large columns
         
         self.samples = samples
         self.ref = 111111
-        self.ref = self.sw_compute()
+        # self.ref = self.sw_compute()
         # self.ref = self.sw_cast(
         #     inputs=self.ref,
         #     in_width=self.data_in_width
@@ -63,6 +73,7 @@ class VerificationCase:
             "IN_WIDTH": self.data_in_width,
             "IN_PARALLELISM": self.in_rows,
             "IN_SIZE": self.in_columns,
+            "OUT_LARGE_COLUMNS": self.out_large_columns
         }
 
     def sw_compute(self):
@@ -173,13 +184,16 @@ async def test_gather(dut):
         dut.data_in_valid.value, dut.data_in.value = test_case.data_in.compute(
             dut.data_in_ready.value
         )
+        _, dut.ind_table = test_case.ind_table.computer(
+            dut.data_in_ready.value
+        )
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.compute(
             dut.data_out_valid.value, dut.data_out.value
         )
         # breakpoint()
         debug_state(dut, "Pre-clk")
-        if (
+        if ( 
             test_case.data_in.is_empty()
             and test_case.outputs.is_full()
         ):
