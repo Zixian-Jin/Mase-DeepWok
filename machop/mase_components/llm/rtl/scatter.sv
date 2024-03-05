@@ -22,8 +22,8 @@ module scatter #(
 
     input [0:0] ind_table [IN_SIZE-1:0],
 
-    output [IN_WIDTH-1:0] data_out_large [OUT_LARGE_COLUMNS * IN_PARALLELISM-1:0],
-    output [IN_WIDTH-1:0] data_out_small [OUT_SMALL_COLUMNS * IN_PARALLELISM-1:0],
+    output [IN_WIDTH-1:0] data_out_large [IN_SIZE * IN_PARALLELISM-1:0],
+    output [IN_WIDTH-1:0] data_out_small [IN_SIZE * IN_PARALLELISM-1:0],
     output data_out_valid,
     input data_out_ready
 );
@@ -35,32 +35,35 @@ module scatter #(
 //       .data_out_valid(fdp_join_valid),
 //       .data_out_ready(fdp_join_ready)
 //   );
-    logic [IN_WIDTH-1:0] reg_out_large [OUT_LARGE_COLUMNS * IN_PARALLELISM-1:0];
-    logic [IN_WIDTH-1:0] reg_out_small [OUT_SMALL_COLUMNS * IN_PARALLELISM-1:0];
+    // logic [IN_WIDTH-1:0] reg_out_large [IN_SIZE * IN_PARALLELISM-1:0];
+    // logic [IN_WIDTH-1:0] reg_out_small [IN_SIZE * IN_PARALLELISM-1:0];
 
     // Assumes that if a large number occurs at the first row, then the rest entries in that column are all large numbers
     for (genvar i = 0; i < IN_PARALLELISM; i = i + 1) begin: ROW 
+        // Parse flattened data_in
         logic [IN_WIDTH-1 :0] current_data_in [IN_SIZE-1 :0];
-        assign current_data_in = data_in[IN_SIZE*(i+1)-1: IN_SIZE*i];
+        assign current_data_in = data_in[IN_SIZE*(i+1)-1 :IN_SIZE*i];
+        
+        // Parse flattened data_out
+        logic [IN_WIDTH-1 :0] current_data_out_large [IN_SIZE-1 :0];
+        logic [IN_WIDTH-1 :0] current_data_out_small [IN_SIZE-1 :0];
+        assign data_out_large[IN_SIZE*(i+1)-1 :IN_SIZE*i] = current_data_out_large[IN_SIZE-1 :0];
+        assign data_out_small[IN_SIZE*(i+1)-1 :IN_SIZE*i] = current_data_out_small[IN_SIZE-1 :0];
 
         logic [IN_SIZE-1 :0] counter;  // counter max value == IN_SIZE
         initial counter = 0;
         logic [IN_WIDTH-1 :0] current_entry;
-
-        logic [OUT_LARGE_COLUMNS-1 :0] counter_large;  // counter max value == OUT_LARGE_COLUMNS
-        logic [OUT_SMALL_COLUMNS-1 :0] counter_small;  // counter max value == OUT_SMALL_COLUMNS
+        assign current_entry = current_data_in[counter];
 
         always_ff @(posedge clk) begin: entryAssignment
-            if (counter == IN_SIZE) begin
+            if (ind_table[counter] == 1'b0) begin
+                // small number, allocated to a small column
+                current_data_out_small[counter] <= current_entry;
+                current_data_out_large[counter] <= 0;
             end else begin
-                current_entry <= current_data_in[counter];
-                if (ind_table[counter] == 1'b0) begin
-                    // small number, allocated to a small column
-                    reg_out_small[counter_small] <= current_entry;
-                end else begin
-                    // large number
-                    reg_out_large[counter_large] <= current_entry;
-                end
+                // large number
+                current_data_out_small[counter] <= 0;
+                current_data_out_large[counter] <= current_entry;
             end
         end
 
@@ -69,12 +72,6 @@ module scatter #(
                 counter <= 0;
             end else begin
                 counter <= counter + 1;
-
-                if (counter_small == OUT_SMALL_COLUMNS) counter_small <= 0;
-                else counter_small <= counter_small + 1;
-
-                if (counter_large == OUT_LARGE_COLUMNS) counter_large <= 0;
-                else counter_large <= counter_large + 1;
             end
         end
     end
@@ -90,6 +87,6 @@ module scatter #(
     // end
     assign data_in_ready = !rst;
     assign data_out_valid = !rst && (ROW[0].counter == IN_SIZE);
-    assign data_out_small = reg_out_small;
-    assign data_out_large = reg_out_large;
+    // assign data_out_small = reg_out_small;
+    // assign data_out_large = reg_out_large;
 endmodule
