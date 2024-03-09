@@ -4,8 +4,14 @@
 # This script tests the fixed point linear
 
 # Manually add mase_cocotb to system path
-import sys
-p='/home/zixian/Mase-DeepWok/machop/'
+import sys, os
+try:
+    p = os.getenv("MASE_RTL")
+    assert p != None
+except:
+    p = os.getenv("mase_rtl")
+    assert p != None
+p = os.path.join(p, '../')
 sys.path.append(p)
 ###############################################
 import os, math, logging
@@ -46,7 +52,7 @@ class VerificationCase:
         self.ind_table = RandomSource(
             name="data_in",
             samples=samples * self.iterations,
-            num=self.in_rows * self.in_columns,
+            num=self.in_columns,
             max_stalls=0,
             debug=debug,
             arithmetic="binary"
@@ -184,12 +190,12 @@ async def test_gather(dut):
         dut.data_in_valid.value, dut.data_in.value = test_case.data_in.compute(
             dut.data_in_ready.value
         )
-        _, dut.ind_table = test_case.ind_table.computer(
+        _, dut.ind_table = test_case.ind_table.compute(
             dut.data_in_ready.value
         )
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.compute(
-            dut.data_out_valid.value, dut.data_out.value
+            dut.data_out_valid.value, dut.data_out_large.value
         )
         # breakpoint()
         debug_state(dut, "Pre-clk")
