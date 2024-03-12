@@ -39,7 +39,7 @@ module fixed_linear #(
     parameter BIAS_PRECISION_1 = 3,
     parameter BIAS_TENSOR_SIZE_DIM_0 = DATA_OUT_0_TENSOR_SIZE_DIM_0,
     parameter BIAS_TENSOR_SIZE_DIM_1 = 1,
-    parameter BIAS_PARALLELISM_DIM_0 = 1,
+    parameter BIAS_PARALLELISM_DIM_0 = WEIGHT_PARALLELISM_DIM_0,
     parameter BIAS_PARALLELISM_DIM_1 = 1
 
 ) (
@@ -57,7 +57,7 @@ module fixed_linear #(
     output weight_ready,
 
     /* verilator lint_off UNUSEDSIGNAL */
-    input [BIAS_PRECISION_0-1:0] bias[BIAS_PARALLELISM_DIM_0 * DATA_OUT_0_PARALLELISM_DIM_0-1:0],
+    input [BIAS_PRECISION_0-1:0] bias[BIAS_PARALLELISM_DIM_0 * DATA_OUT_0_PARALLELISM_DIM_1-1:0],
     input bias_valid,
     /* verilator lint_on UNUSEDSIGNAL */
     output bias_ready,
@@ -146,9 +146,9 @@ module fixed_linear #(
 
 
   if (HAS_BIAS == 1) begin
-    logic [ACC_WIDTH-1:0] bias_sext[BIAS_PARALLELISM_DIM_0 * DATA_IN_0_PARALLELISM_DIM_0-1:0];
+    logic [ACC_WIDTH-1:0] bias_sext[BIAS_PARALLELISM_DIM_0 * DATA_IN_0_PARALLELISM_DIM_1-1:0];
     logic acc_join_valid, acc_join_ready;
-    logic [DATA_IN_0_PARALLELISM_DIM_0-1:0] reg_ready;
+    logic [BIAS_PARALLELISM_DIM_0-1:0] reg_ready;
 
     join2 #() acc_join_inst (
         .data_in_ready ({bias_ready, acc_ready}),
@@ -158,7 +158,7 @@ module fixed_linear #(
     );
 
     fixed_rounding #(
-        .IN_SIZE(DATA_IN_0_PARALLELISM_DIM_0),
+        .IN_SIZE(BIAS_PARALLELISM_DIM_0 * DATA_IN_0_PARALLELISM_DIM_1),
         .IN_WIDTH(BIAS_PRECISION_0),
         .IN_FRAC_WIDTH(BIAS_PRECISION_1),
         .OUT_WIDTH(ACC_WIDTH),
@@ -170,7 +170,7 @@ module fixed_linear #(
 
     assign acc_join_ready = &reg_ready;
 
-    for (genvar i = 0; i < DATA_IN_0_PARALLELISM_DIM_0; i = i + 1) begin : add_bias
+    for (genvar i = 0; i < WEIGHT_PARALLELISM_DIM_0; i = i + 1) begin : add_bias
       logic [DATA_OUT_0_PRECISION_0-1:0] add;
       assign add = $signed(acc_data_out[i]) + $signed(bias_sext[i]);
       /* verilator lint_off UNUSEDSIGNAL */

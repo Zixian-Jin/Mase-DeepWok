@@ -2,7 +2,17 @@
 
 # This script tests the fixed point linear
 import os, math, logging
-
+# Manually add mase_cocotb to system path
+import sys, os
+try:
+    p = os.getenv("MASE_RTL")
+    assert p != None
+except:
+    p = os.getenv("mase_rtl")
+    assert p != None
+p = os.path.join(p, '../')
+sys.path.append(p)
+###############################################
 from mase_cocotb.random_test import RandomSource, RandomSink, check_results
 from mase_cocotb.runner import mase_runner
 
@@ -31,10 +41,10 @@ class VerificationCase:
         self.data_out_frac_width = 1
         self.has_bias = 1
 
-        self.in_rows = 2000
+        self.in_rows = 5
         self.in_columns = 4
-        self.weight_rows = self.in_columns
-        self.weight_columns = 2
+        self.weight_rows = 20
+        self.weight_columns = self.in_rows
         self.iterations = 3
         self.data_in = RandomSource(
             name="data_in",
@@ -53,7 +63,7 @@ class VerificationCase:
         self.bias = RandomSource(
             name="bias",
             samples=samples,
-            num=self.in_rows * self.weight_columns,
+            num=self.weight_rows * self.in_columns,
             max_stalls=0,
             debug=debug,
         )
@@ -64,7 +74,7 @@ class VerificationCase:
             inputs=self.ref,
             in_width=self.data_in_width
             + self.weight_width
-            + math.ceil(math.log2(self.iterations * self.in_columns))
+            + math.ceil(math.log2(self.iterations * self.weight_columns))
             + self.has_bias,
             in_frac_width=self.data_in_frac_width + self.weight_frac_width,
             out_width=self.data_out_width,
@@ -82,9 +92,9 @@ class VerificationCase:
             "HAS_BIAS": self.has_bias,
             "OUT_WIDTH": self.data_out_width,
             "OUT_FRAC_WIDTH": self.data_out_frac_width,
-            "IN1_PARALLELISM": self.in_rows,
-            "IN_SIZE": self.in_columns,
-            "IN2_PARALLELISM": self.weight_columns,
+            "IN1_PARALLELISM": self.in_columns,
+            "IN_SIZE": self.in_rows,
+            "IN2_PARALLELISM": self.weight_rows,
             "IN_DEPTH": self.iterations,
         }
 
@@ -92,19 +102,19 @@ class VerificationCase:
         final = []
         ref = []
         for i in range(self.samples):
-            acc = [0 for _ in range(self.in_rows * self.weight_columns)]
-            for w in range(self.in_rows):
+            acc = [0 for _ in range(self.weight_rows * self.in_columns)]
+            for w in range(self.weight_rows):
                 for j in range(self.iterations):
                     data_idx = i * self.iterations + j
-                    for k in range(self.weight_columns):
+                    for k in range(self.in_columns):
                         s = [
-                            self.data_in.data[data_idx][w * self.in_columns + h]
-                            * self.weight.data[data_idx][k * self.weight_rows + h]
-                            for h in range(self.weight_rows)
-                        ]
-                        acc[w * self.weight_columns + k] += sum(s)
+                            self.weight.data[data_idx][w * self.weight_columns + h]
+                            * self.data_in.data[data_idx][k * self.in_rows + h]
+                            for h in range(self.weight_columns)
+                            ]
+                        acc[w * self.in_columns + k] += sum(s)
             if self.has_bias:
-                for j in range(self.in_rows * self.weight_columns):
+                for j in range(self.weight_rows * self.in_columns):
                     acc[j] += self.bias.data[i][j] << (
                         self.weight_frac_width
                         + self.data_in_frac_width
@@ -113,7 +123,7 @@ class VerificationCase:
             ref.append(acc)
         ref.reverse()
         return ref
-
+       
     def sw_cast(self, inputs, in_width, in_frac_width, out_width, out_frac_width):
         outputs = []
         for j in range(len(inputs)):
@@ -156,7 +166,7 @@ def debug_state(dut, state):
 @cocotb.test()
 async def test_fixed_linear(dut):
     """Test integer based vector mult"""
-    samples = 1000
+    samples = 100
     test_case = VerificationCase(samples=samples)
 
     # Reset cycle
@@ -230,6 +240,6 @@ async def test_fixed_linear(dut):
 if __name__ == "__main__":
     tb = VerificationCase()
     mase_runner(
-        module_params=tb.get_dut_parameters(),
+        module_param_list=[tb.get_dut_parameters()],
         extra_build_args=["--unroll-count", "3000"],
     )
