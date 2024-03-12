@@ -14,6 +14,8 @@ MASE_HW_DEPS = {
     "activations/fixed_leaky_relu": [],
     "llm/gather" : ["llm"],
     "llm/scatter" : ["llm"],
+    "llm/gather_scatter_join": ["llm"],
+    "llm/llm_int8": ["llm", "fixed_arithmetic", "cast", "linear", "matmul", "common"],
     # TODO: Failing test: missing "z_proj" in config?
     # "attention/fixed_self_att": ["attention", "cast", "common", "conv",
     #                              "fixed_arithmetic", "linear", "matmul", "ViT"],
@@ -26,6 +28,7 @@ MASE_HW_DEPS = {
     "fixed_arithmetic/fixed_adder_tree": ["fixed_arithmetic", "common"],
     "fixed_arithmetic/fixed_vector_mult": ["fixed_arithmetic", "common"],
     "fixed_arithmetic/fixed_dot_product": ["fixed_arithmetic", "common"],
+    "fixed_arithmetic/fixed_matmul_core": ["fixed_arithmetic", "common", "linear", "cast"],
     "common/cut_data": ["common"],
     "common/wrap_data": ["common"],
     "common/skid_buffer": [],

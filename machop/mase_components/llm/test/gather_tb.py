@@ -4,8 +4,14 @@
 # This script tests the fixed point linear
 
 # Manually add mase_cocotb to system path
-import sys
-p='/home/zixian/Mase-DeepWok/machop/'
+import sys, os
+try:
+    p = os.getenv("MASE_RTL")
+    assert p != None
+except:
+    p = os.getenv("mase_rtl")
+    assert p != None
+p = os.path.join(p, '../')
 sys.path.append(p)
 ###############################################
 import os, math, logging

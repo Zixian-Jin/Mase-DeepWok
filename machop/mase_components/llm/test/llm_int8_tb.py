@@ -35,9 +35,13 @@ if debug:
 class VerificationCase:
     def __init__(self, samples=10):
         self.data_in_width = 16
-        self.in_rows = 2000
+        self.weight_width = 16
+        self.in_rows = 20
         self.in_columns = 4
-        self.iterations = 1
+        self.weight_rows = self.in_columns
+        self.weight_columns = 1
+        self.iterations = 5
+        self.has_bias = 0
         
         self.data_in = RandomSource(
             name="data_in",
@@ -48,11 +52,19 @@ class VerificationCase:
             arithmetic="llm-fp16"
         )
         
+        self.weight = RandomSource(
+            name="data_in",
+            samples=samples * self.iterations,
+            num=self.weight_rows * self.weight_columns,
+            max_stalls=0,
+            debug=debug,
+            arithmetic="llm-fp16"
+        )   
         self.outputs = RandomSink(samples=samples, max_stalls=0, debug=debug)
         
         self.samples = samples
-        self.ref = 111111
-        # self.ref = self.sw_compute()
+        # self.ref = 111111
+        self.ref = self.sw_compute()
         # self.ref = self.sw_cast(
         #     inputs=self.ref,
         #     in_width=self.data_in_width
@@ -69,6 +81,11 @@ class VerificationCase:
             "IN_WIDTH": self.data_in_width,
             "IN_PARALLELISM": self.in_rows,
             "IN_SIZE": self.in_columns,
+            "WEIGHT_WIDTH": self.weight_width,
+            "WEIGHT_PARALLELISM": self.weight_columns,
+            "WEIGHT_SIZE": self.weight_rows,
+            "HAS_BIAS": self.has_bias,
+            "IN_DEPTH": self.iterations
         }
 
     def sw_compute(self):
@@ -135,7 +152,7 @@ def debug_state(dut, state):
 
 
 @cocotb.test()
-async def test_scatter(dut):
+async def test_llm_int8(dut):
     """Test integer based vector mult"""
     samples = 100
     test_case = VerificationCase(samples=samples)
@@ -168,6 +185,7 @@ async def test_scatter(dut):
         await FallingEdge(dut.clk)
         debug_state(dut, "Post-clk")
         dut.data_in_valid.value = test_case.data_in.pre_compute()
+        dut.weight_valid.value = test_case.weight.pre_compute()
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.pre_compute(
             dut.data_out_valid.value
@@ -179,9 +197,12 @@ async def test_scatter(dut):
         dut.data_in_valid.value, dut.data_in.value = test_case.data_in.compute(
             dut.data_in_ready.value
         )
+        dut.weight_valid.value, dut.weight.value = test_case.weight.compute(
+            dut.weight_ready.value
+        )
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.compute(
-            dut.data_out_valid.value, dut.data_out_large.value
+            dut.data_out_valid.value, dut.data_out.value
         )
         # breakpoint()
         debug_state(dut, "Pre-clk")
