@@ -160,7 +160,6 @@ class RandomSink:
 
 
 def check_results(hw_out, sw_out):
-    return True
     assert len(hw_out) == len(
         sw_out
     ), "Mismatched output size: {} expected = {}".format(len(hw_out), len(sw_out))

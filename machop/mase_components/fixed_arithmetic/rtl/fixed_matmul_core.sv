@@ -19,8 +19,8 @@ module fixed_matmul_core #(
     parameter IN_DEPTH = 3,
 
     parameter HAS_BIAS = 0,
-    parameter BIAS_PARALLELISM = IN2_PARALLELISM,
-    parameter BIAS_SIZE = IN1_PARALLELISM,
+    parameter BIAS_PARALLELISM = IN1_PARALLELISM,
+    parameter BIAS_SIZE = IN2_PARALLELISM,
     parameter OUT_ROWS = IN1_PARALLELISM,
     parameter OUT_COLUMNS = IN2_PARALLELISM
 ) (
