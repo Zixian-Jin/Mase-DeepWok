@@ -16,6 +16,9 @@ MASE_HW_DEPS = {
     "llm/scatter" : ["llm"],
     "llm/gather_scatter_join": ["llm"],
     "llm/llm_int8": ["llm", "fixed_arithmetic", "cast", "linear", "matmul", "common"],
+    "llm/fixed_comparator_tree_layer": ["llm"],
+    "llm/fixed_comparator_tree": ["llm", "common"],
+    "llm/quantizer": ["llm", "cast", "common", "fixed_arithmetic"],
     # TODO: Failing test: missing "z_proj" in config?
     # "attention/fixed_self_att": ["attention", "cast", "common", "conv",
     #                              "fixed_arithmetic", "linear", "matmul", "ViT"],
