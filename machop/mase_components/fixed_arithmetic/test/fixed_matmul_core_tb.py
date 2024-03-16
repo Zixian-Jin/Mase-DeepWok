@@ -3,7 +3,15 @@
 # This script tests the fixed point linear
 import os, math, logging
 import sys
-sys.path.append('/home/ic/MYWORKSPACE/Mase-DeepWok/machop/')
+try:
+    p = os.getenv("MASE_RTL")
+    assert p != None
+except:
+    p = os.getenv("mase_rtl")
+    assert p != None
+p = os.path.join(p, '../')
+sys.path.append(p)
+###############################################
 from mase_cocotb.random_test import RandomSource, RandomSink, check_results
 from mase_cocotb.runner import mase_runner
 
