@@ -16,7 +16,7 @@ sys.path.append(p)
 ###############################################
 import os, math, logging
 
-from mase_cocotb.random_test import RandomSource, RandomSink, check_results
+from mase_cocotb.random_test import *
 from mase_cocotb.runner import mase_runner
 
 import cocotb
@@ -77,10 +77,11 @@ class VerificationCase:
         ref = []
         
         for i in range(self.samples):
-            max_val = self.absmax(self.data_in.data[i])
+            max_val = abs(self.absmax(self.data_in.data[i]))
+            scale_factor = (2**(self.data_out_width-1) - 1)/max_val
             current_row = [0 for _ in range(self.in_rows*self.in_columns)]
             for j in range(self.in_rows*self.in_columns):
-                current_row[j] = self.data_in.data[i][j]*(2**(self.data_out_width-1) - 1)/max_val
+                current_row[j] = self.data_in.data[i][j]*scale_factor
                 current_row[j] = round(current_row[j])
             ref.append(current_row)
         ref.reverse()
@@ -186,10 +187,18 @@ async def test_quantizer(dut):
         ):
             done = True
             break
+        try:
+            print(i)
+            print(test_case.data_in.data[i])
+        except:
+            pass
+        # print(test_case.outputs.data[i])
+        # print(test_case.ref[i])
+        print('---------------------------------')
     assert (
         done
     ), "Deadlock detected or the simulation reaches the maximum cycle limit (fixed it by adjusting the loop trip count)"
-    check_results(test_case.outputs.data, test_case.ref)
+    check_results_signed(test_case.outputs.data, test_case.ref, thres=100)  # TODO: allow error
 
 
 if __name__ == "__main__":

@@ -9,6 +9,8 @@ module quantizer #(
     parameter OUT_ROWS = IN_PARALLELISM,
     parameter OUT_COLUMNS = IN_SIZE,
 
+    parameter QUANTIZATION_WIDTH = OUT_WIDTH,
+
     parameter MAX_NUM_WIDTH = IN_WIDTH
 ) (
     input clk,
@@ -40,6 +42,10 @@ logic [MAX_NUM_WIDTH-1:0] reg_max_num_abs;
 assign reg_max_num_abs = ($signed(reg_max_num) > 0) ? reg_max_num : -reg_max_num;
 assign max_num = reg_max_num_abs;
 
+logic cmp_in_valid, cmp_in_ready;
+logic cmp_out_valid, cmp_out_ready;
+assign cmp_in_valid = data_in_valid;
+assign cmp_out_ready = data_out_ready;
 
 fixed_comparator_tree #(
     .IN_SIZE(IN_SIZE*IN_PARALLELISM),
@@ -49,13 +55,42 @@ fixed_comparator_tree #(
     .rst(rst),
     /* verilator lint_on UNUSEDSIGNAL */
     .data_in(data_in),
-    .data_in_valid(data_in_valid),
-    .data_in_ready(data_in_ready),
+    .data_in_valid(cmp_in_valid),
+    .data_in_ready(cmp_in_ready),
     .data_out(reg_max_num),
-    .data_out_valid(data_out_valid),
-    .data_out_ready(data_out_ready)
+    .data_out_valid(cmp_out_valid),
+    .data_out_ready(cmp_out_ready)
 );
 
+logic [IN_WIDTH-1 :0] data_in_buffered [IN_SIZE*IN_PARALLELISM-1 :0]; 
+localparam CMP_TREE_DELAY = $clog2(IN_SIZE*IN_PARALLELISM) + 1;  // increased by 1 so the fifo is never full
+
+for (genvar i = 0; i < IN_SIZE * IN_PARALLELISM; i = i + 1) begin: PARALLEL_FIFO
+    logic fifo_in_valid, fifo_in_ready;
+    logic fifo_out_valid, fifo_out_ready;
+    logic fifo_empty;
+    assign fifo_in_valid = data_in_valid;
+    assign fifo_out_ready = data_out_ready;
+
+    fifo #(
+        .DEPTH (CMP_TREE_DELAY+1),
+        .DATA_WIDTH (IN_WIDTH)
+    ) data_in_fifo_inst (
+        .clk (clk),
+        .rst (rst),
+        .in_data (data_in[i]),
+        .in_valid (fifo_in_valid),
+        .in_ready (fifo_in_ready),
+        .out_data (data_in_buffered[i]),
+        .out_valid (fifo_out_valid),
+        .out_ready (fifo_out_ready),
+        .empty (fifo_empty)
+    );
+end
+
+// TODO: assump that all fifos are operated synchronously
+assign data_in_ready = (PARALLEL_FIFO[0].fifo_in_ready && !rst) && cmp_in_ready;
+assign data_out_valid = PARALLEL_FIFO[0].fifo_out_valid && cmp_out_valid;
 
 // assign scale_factor = ((1 << (OUT_WIDTH-1))-1) << (SCALE_FACTOR_FRAC_WIDITH); //TODO?? reshape: make its width 2*IN_SIZE and do multiply first then divide
 logic [SCALE_FACTOR_WIDTH-1:0] temp;
@@ -71,7 +106,7 @@ for (genvar i = 0; i < IN_SIZE * IN_PARALLELISM; i = i + 1) begin: QUANTIZE
     .IN_A_WIDTH(IN_WIDTH),
     .IN_B_WIDTH(SCALE_FACTOR_WIDTH)
     ) fixed_mult_inst(
-    .data_a(data_in[i]),
+    .data_a(data_in_buffered[i]),
     .data_b(scale_factor),
     .product(data_out_unrounded[i])
     );
@@ -89,6 +124,8 @@ fixed_rounding #(
     .data_in(data_out_unrounded), 
     .data_out(data_out) 
 );
+
+
 
 endmodule
 
