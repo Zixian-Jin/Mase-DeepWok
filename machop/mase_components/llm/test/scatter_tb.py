@@ -16,7 +16,7 @@ sys.path.append(p)
 ###############################################
 import os, math, logging
 
-from mase_cocotb.random_test import RandomSource, RandomSink, check_results
+from mase_cocotb.random_test import *
 from mase_cocotb.runner import mase_runner
 
 import cocotb
@@ -35,13 +35,12 @@ if debug:
 class VerificationCase:
     def __init__(self, samples=10):
         self.data_in_width = 16
-        self.in_rows = 2000
+        self.in_rows = 20
         self.in_columns = 4
-        self.iterations = 1
         
         self.data_in = RandomSource(
             name="data_in",
-            samples=samples * self.iterations,
+            samples=samples,
             num=self.in_rows * self.in_columns,
             max_stalls=0,
             debug=debug,
@@ -51,8 +50,7 @@ class VerificationCase:
         self.outputs = RandomSink(samples=samples, max_stalls=0, debug=debug)
         
         self.samples = samples
-        self.ref = 111111
-        # self.ref = self.sw_compute()
+        self.ref = self.sw_compute()
         # self.ref = self.sw_cast(
         #     inputs=self.ref,
         #     in_width=self.data_in_width
@@ -72,31 +70,30 @@ class VerificationCase:
         }
 
     def sw_compute(self):
+        # for small_large_out only
         final = []
         ref = []
-        for i in range(self.samples):
-            acc = [0 for _ in range(self.in_rows * self.weight_columns)]
-            for w in range(self.in_rows):
-                for j in range(self.iterations):
-                    data_idx = i * self.iterations + j
-                    for k in range(self.weight_columns):
-                        s = [
-                            self.data_in.data[data_idx][w * self.in_columns + h]
-                            * self.weight.data[data_idx][k * self.weight_rows + h]
-                            for h in range(self.weight_rows)
-                        ]
-                        acc[w * self.weight_columns + k] += sum(s)
-            if self.has_bias:
-                for j in range(self.in_rows * self.weight_columns):
-                    acc[j] += self.bias.data[i][j] << (
-                        self.weight_frac_width
-                        + self.data_in_frac_width
-                        - self.bias_frac_width
-                    )
-            ref.append(acc)
+        for i in range(len(self.data_in.data)):
+            current_vector = [0]*len(self.data_in.data[0])
+            for j in range(len(current_vector)):
+                entry = self.data_in.data[i][j]
+                if self.sw_large_number_checker(entry, pos=13):
+                    # entries with large numbers are masked
+                    current_vector[j] = 0
+                else:
+                    current_vector[j] = entry
+            ref.append(current_vector)
         ref.reverse()
         return ref
 
+    def sw_large_number_checker(self, data, pos=14):
+        # MSB checker for fixed-point 16
+        # data is a signed integer
+        if (data > 0):
+            return (data >= (2**pos))
+        else:
+            return (abs(data) >= (2**pos + 1))
+        
     def sw_cast(self, inputs, in_width, in_frac_width, out_width, out_frac_width):
         outputs = []
         for j in range(len(inputs)):
@@ -133,13 +130,16 @@ def debug_state(dut, state):
         )
     )
 
-
+def unsignedTosigned(x):
+    if x < 2**15:
+        return x
+    else:
+        return x - 2**16
 @cocotb.test()
 async def test_scatter(dut):
     """Test integer based vector mult"""
-    samples = 100
+    samples = 10
     test_case = VerificationCase(samples=samples)
-
     # Reset cycle
     await Timer(20, units="ns")
     dut.rst.value = 1
@@ -181,7 +181,7 @@ async def test_scatter(dut):
         )
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.compute(
-            dut.data_out_valid.value, dut.data_out_large.value
+            dut.data_out_valid.value, dut.data_out_small.value
         )
         # breakpoint()
         debug_state(dut, "Pre-clk")
@@ -195,7 +195,7 @@ async def test_scatter(dut):
         done
     ), "Deadlock detected or the simulation reaches the maximum cycle limit (fixed it by adjusting the loop trip count)"
 
-    check_results(test_case.outputs.data, test_case.ref)
+    check_results_signed(test_case.outputs.data, test_case.ref)
 
 
 if __name__ == "__main__":

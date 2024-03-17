@@ -62,12 +62,12 @@ module scatter #(
             always_ff begin
                 if (ind_table[i*IN_SIZE + j] == 1'b0) begin
                     // small number, allocated to small column
-                    current_data_out_small[i*IN_SIZE + j] = current_data_in[i*IN_SIZE + j];
-                    current_data_out_large[i*IN_SIZE + j] = 0;
+                    current_data_out_small[j] = current_data_in[j];
+                    current_data_out_large[j] = 0;
                 end else begin
                     // large number
-                    current_data_out_small[i*IN_SIZE + j] = 0;
-                    current_data_out_large[i*IN_SIZE + j] = current_data_in[i*IN_SIZE + j];                
+                    current_data_out_small[j] = 0;
+                    current_data_out_large[j] = current_data_in[j];                
                 end
             end
         end

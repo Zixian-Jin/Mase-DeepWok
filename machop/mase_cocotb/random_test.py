@@ -41,7 +41,7 @@ class RandomSource:
         elif arithmetic in ["ternary"]:
             self.rand_gen = lambda: binary_encode(random.randint(-1, 1))
         elif arithmetic in ["llm-fp16"]:
-            self.rand_gen = lambda: random.randint(0, 2**16-1)
+            self.rand_gen = lambda: random.randint(-2**14, 2**14)
         else:
             self.rand_gen = lambda: random.randint(-random.randint(15, 30), random.randint(15, 30))
             # self.rand_gen = lambda: random.randint(1,1)
@@ -184,7 +184,7 @@ def check_results(hw_out, sw_out, thres=1):
             )
 
 
-def check_results_signed(hw_out, sw_out, thres=1):
+def check_results_signed(hw_out, sw_out,thres=1):
     assert len(hw_out) == len(
         sw_out
     ), "Mismatched output size: {} expected = {}".format(len(hw_out), len(sw_out))
@@ -193,7 +193,7 @@ def check_results_signed(hw_out, sw_out, thres=1):
             assert (
                 # [i.signed_integer for i in hw_out[i]] == sw_out[i]
                 compare_lists_approx([i.signed_integer for i in hw_out[i]], sw_out[i], thres)
-            ),  "Mismatched output value {}: {} expected = {}".format(
+            ), "Mismatched output value {}: {} expected = {}".format(
                 i, [int(t.signed_integer) for t in hw_out[i]], [int(t) for t in sw_out[i]]
             )
         return True
