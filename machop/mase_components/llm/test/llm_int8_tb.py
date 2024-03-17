@@ -16,6 +16,31 @@ sys.path.append(p)
 ###############################################
 import os, math, logging
 
+from mase_cocotb.random_test import *
+from mase_cocotb.runner import mase_runner
+
+import cocotb
+from cocotb.triggers import Timer
+from cocotb.triggers import FallingEdge
+from cocotb.clock import Clock
+
+debug = True
+
+logger = logging.getLogger("tb_signals")
+if debug:
+    logger.setLevel(logging.DEBUG)
+
+
+
+
+
+
+#!/usr/bin/env python3
+
+# This script tests the fixed point linear
+import os, math, logging
+import sys
+sys.path.append('/home/ic/TEMP/mase/machop/')
 from mase_cocotb.random_test import RandomSource, RandomSink, check_results
 from mase_cocotb.runner import mase_runner
 
@@ -34,36 +59,44 @@ if debug:
 # DUT test specifications
 class VerificationCase:
     def __init__(self, samples=10):
-        self.data_in_width = 16
-        self.weight_width = 16
+        self.data_in_width = 8
+        self.data_in_frac_width = 0
+        self.weight_width = 8
+        self.weight_frac_width = 0
+        self.bias_width = 8
+        self.bias_frac_width = 0
+        self.data_out_width = 18
+        self.data_out_frac_width = 0
+        self.has_bias = 0
+
         self.in_rows = 20
         self.in_columns = 4
         self.weight_rows = self.in_columns
         self.weight_columns = 1
-        self.iterations = 5
-        self.has_bias = 0
-        
+        self.iterations = 3
         self.data_in = RandomSource(
             name="data_in",
             samples=samples * self.iterations,
             num=self.in_rows * self.in_columns,
             max_stalls=0,
             debug=debug,
-            arithmetic="llm-fp16"
         )
-        
         self.weight = RandomSource(
-            name="data_in",
+            name="weight",
             samples=samples * self.iterations,
             num=self.weight_rows * self.weight_columns,
             max_stalls=0,
             debug=debug,
-            arithmetic="llm-fp16"
-        )   
+        )
+        self.bias = RandomSource(
+            name="bias",
+            samples=samples,
+            num=self.in_rows * self.weight_columns,
+            max_stalls=0,
+            debug=debug,
+        )
         self.outputs = RandomSink(samples=samples, max_stalls=0, debug=debug)
-        
         self.samples = samples
-        # self.ref = 111111
         self.ref = self.sw_compute()
         # self.ref = self.sw_cast(
         #     inputs=self.ref,
@@ -79,13 +112,12 @@ class VerificationCase:
     def get_dut_parameters(self):
         return {
             "IN_WIDTH": self.data_in_width,
-            "IN_PARALLELISM": self.in_rows,
             "IN_SIZE": self.in_columns,
-            "WEIGHT_WIDTH": self.weight_width,
+            "IN_PARALLELISM": self.in_rows,
             "WEIGHT_PARALLELISM": self.weight_columns,
-            "WEIGHT_SIZE": self.weight_rows,
             "HAS_BIAS": self.has_bias,
-            "IN_DEPTH": self.iterations
+            "IN_DEPTH": self.iterations,
+            "OUT_WIDTH": self.data_out_width
         }
 
     def sw_compute(self):
@@ -141,8 +173,10 @@ class VerificationCase:
 
 def debug_state(dut, state):
     logger.debug(
-        "{} State: (in_ready,in_valid,out_ready,out_valid) = ({},{},{},{})".format(
+        "{} State: (w_ready,w_valid,in_ready,in_valid,out_ready,out_valid) = ({},{},{},{},{},{})".format(
             state,
+            dut.data_in_ready.value,
+            dut.weight_valid.value,
             dut.data_in_ready.value,
             dut.data_in_valid.value,
             dut.data_out_ready.value,
@@ -152,7 +186,7 @@ def debug_state(dut, state):
 
 
 @cocotb.test()
-async def test_llm_int8(dut):
+async def test_llm_int8_tb(dut):
     """Test integer based vector mult"""
     samples = 100
     test_case = VerificationCase(samples=samples)
@@ -170,6 +204,7 @@ async def test_llm_int8(dut):
     await Timer(500, units="ns")
 
     # Synchronize with the clock
+    dut.weight_valid.value = 0
     dut.data_in_valid.value = 0
     dut.data_out_ready.value = 1
     debug_state(dut, "Pre-clk")
@@ -181,11 +216,12 @@ async def test_llm_int8(dut):
 
     done = False
     # Set a timeout to avoid deadlock
-    for i in range(samples * 10):
+    for i in range(samples * 50):
         await FallingEdge(dut.clk)
         debug_state(dut, "Post-clk")
-        dut.data_in_valid.value = test_case.data_in.pre_compute()
+        dut.bias_valid.value = test_case.bias.pre_compute()
         dut.weight_valid.value = test_case.weight.pre_compute()
+        dut.data_in_valid.value = test_case.data_in.pre_compute()
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.pre_compute(
             dut.data_out_valid.value
@@ -193,12 +229,14 @@ async def test_llm_int8(dut):
         debug_state(dut, "Pre-clk")
         await Timer(1, units="ns")
         debug_state(dut, "Post-clk")
-
-        dut.data_in_valid.value, dut.data_in.value = test_case.data_in.compute(
-            dut.data_in_ready.value
-        )
+        # dut.bias_valid.value, dut.bias.value = test_case.bias.compute(
+        #     dut.bias_ready.value
+        # )
         dut.weight_valid.value, dut.weight.value = test_case.weight.compute(
             dut.weight_ready.value
+        )
+        dut.data_in_valid.value, dut.data_in.value = test_case.data_in.compute(
+            dut.data_in_ready.value
         )
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.compute(
@@ -207,7 +245,9 @@ async def test_llm_int8(dut):
         # breakpoint()
         debug_state(dut, "Pre-clk")
         if (
-            test_case.data_in.is_empty()
+            # test_case.bias.is_empty()  // TODO
+            test_case.weight.is_empty()
+            and test_case.data_in.is_empty()
             and test_case.outputs.is_full()
         ):
             done = True
@@ -216,7 +256,7 @@ async def test_llm_int8(dut):
         done
     ), "Deadlock detected or the simulation reaches the maximum cycle limit (fixed it by adjusting the loop trip count)"
 
-    check_results(test_case.outputs.data, test_case.ref)
+    check_results_signed(test_case.outputs.data, test_case.ref)
 
 
 if __name__ == "__main__":
@@ -225,3 +265,4 @@ if __name__ == "__main__":
         module_param_list=[tb.get_dut_parameters()],
         extra_build_args=["--unroll-count", "3000"],
     )
+

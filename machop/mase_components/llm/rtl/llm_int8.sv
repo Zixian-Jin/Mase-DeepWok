@@ -9,7 +9,7 @@ module llm_int8 #(
     parameter WEIGHT_PARALLELISM = 1, // in cols
 
     parameter HAS_BIAS = 0,
-    parameter BIAS_WIDTH = 16,
+    parameter BIAS_WIDTH = IN_WIDTH,  // FP16
     parameter BIAS_PARALLELISM = IN_PARALLELISM,  // aborted
     parameter BIAS_SIZE = WEIGHT_PARALLELISM, // aborted
 
@@ -89,7 +89,7 @@ module llm_int8 #(
 
 
     // set dummy bias signals 
-    logic [IN_WIDTH-1 :0] bias[BIAS_PARALLELISM * BIAS_SIZE - 1 : 0];
+    logic [BIAS_WIDTH-1 :0] bias[BIAS_PARALLELISM * BIAS_SIZE - 1 : 0];
     logic bias_valid = 1'b1;
     logic bias_ready = 1'b1;
 
@@ -106,20 +106,20 @@ module llm_int8 #(
         .BIAS_FRAC_WIDTH(0),
         .OUT_WIDTH(OUT_WIDTH),
         .OUT_FRAC_WIDTH(0),
-        .IN1_PARALLELISM(WEIGHT_PARALLELISM),
+        .IN1_PARALLELISM(IN_PARALLELISM),
         .IN_SIZE(IN_SIZE),
-        .IN2_PARALLELISM(IN_PARALLELISM),
+        .IN2_PARALLELISM(WEIGHT_PARALLELISM),
         .IN_DEPTH(IN_DEPTH),
         .HAS_BIAS(HAS_BIAS)
     ) inst_fmmc_large (
         .clk(clk),
         .rst(rst),
-        .data_in1(weight),
-        .data_in1_valid(weight_out_valid),
-        .data_in1_ready(weight_out_ready),
-        .data_in2(data_in_large),
-        .data_in2_valid(data_in_out_valid),
-        .data_in2_ready(data_in_out_ready),
+        .data_in1(data_in_large),
+        .data_in1_valid(data_in_out_valid),
+        .data_in1_ready(data_in_out_ready),
+        .data_in2(weight),
+        .data_in2_valid(weight_out_valid),
+        .data_in2_ready(weight_out_ready),
         .bias(bias),
         .bias_valid(bias_valid),
         .bias_ready(bias_ready),
@@ -138,20 +138,20 @@ module llm_int8 #(
         .BIAS_FRAC_WIDTH(0),
         .OUT_WIDTH(OUT_WIDTH),
         .OUT_FRAC_WIDTH(0),
-        .IN1_PARALLELISM(WEIGHT_PARALLELISM),
+        .IN1_PARALLELISM(IN_PARALLELISM),
         .IN_SIZE(IN_SIZE),
-        .IN2_PARALLELISM(IN_PARALLELISM),
+        .IN2_PARALLELISM(WEIGHT_PARALLELISM),
         .IN_DEPTH(IN_DEPTH),
         .HAS_BIAS(HAS_BIAS)
     ) inst_fmmc_small (
         .clk(clk),
         .rst(rst),
-        .data_in1(weight),
-        .data_in1_valid(weight_out_valid),
-        .data_in1_ready(weight_out_ready),
-        .data_in2(data_in_small),
-        .data_in2_valid(data_in_out_valid),
-        .data_in2_ready(data_in_out_ready),
+        .data_in1(data_in_small),
+        .data_in1_valid(data_in_out_valid),
+        .data_in1_ready(data_in_out_ready),
+        .data_in2(weight),
+        .data_in2_valid(weight_out_valid),
+        .data_in2_ready(weight_out_ready),
         .bias(bias),
         .bias_valid(bias_valid),
         .bias_ready(bias_ready),
@@ -165,7 +165,7 @@ module llm_int8 #(
     end
 
     assign data_in_ready = !rst;
-    assign data_out_valid = !rst && data_in_valid && matmul_large_valid && matmul_small_valid;  // TODO: join
+    assign data_out_valid = !rst && matmul_large_valid && matmul_small_valid;  // TODO: join
     assign matmul_large_ready = data_out_ready;
     assign matmul_small_ready = data_out_ready;
 

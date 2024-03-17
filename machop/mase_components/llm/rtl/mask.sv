@@ -31,7 +31,7 @@ module mask #(
 );
 
     // Large-number checking
-    for (genvar i = 0; i < IN_SIZE * IN_PARALLELISM; i = i + 1) begin: COL
+    for (genvar i = 0; i < IN_SIZE * IN_PARALLELISM; i = i + 1) begin: MSB_CHECK
         fp16_comparator #(
             .THRES(THRES)
         ) fp16_comp_inst(
