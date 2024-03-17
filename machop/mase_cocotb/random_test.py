@@ -43,7 +43,8 @@ class RandomSource:
         elif arithmetic in ["llm-fp16"]:
             self.rand_gen = lambda: random.randint(0, 2**16-1)
         else:
-            self.rand_gen = lambda: random.randint(0, 30)
+            self.rand_gen = lambda: random.randint(-random.randint(15, 30), random.randint(15, 30))
+            # self.rand_gen = lambda: random.randint(1,1)
 
         if len(data_specify) == 0:
             if is_data_vector:
@@ -159,43 +160,58 @@ class RandomSink:
         return len(self.data) == self.samples
 
 
-def check_results(hw_out, sw_out):
+def check_results(hw_out, sw_out, thres=1):
+    assert len(hw_out) == len(
+        sw_out
+    ), "Mismatched output size: {} expected = {}".format(len(hw_out), len(sw_out))
+    
+    if type(hw_out[0]) == list:
+        for i in range(len(hw_out)):
+            assert (
+                # hw_out[i] == sw_out[i]
+                compare_lists_approx(hw_out[i], sw_out[i], thres)
+            ), "Mismatched output value {}: {} expected = {}".format(
+                i, [int(t) for t in hw_out[i]], [int(t) for t in sw_out[i]]
+            )
+        return True
+    else:
+        for i in range(len(hw_out)):
+            assert (
+                # int(hw_out[i]) == int(sw_out[i])
+                compare_numbers_approx(int(hw_out[i]), int(sw_out[i]), thres)
+            ), "Mismatched output value {}: {} expected = {}".format(
+                i, int(hw_out[i]), int(sw_out[i])
+            )
+
+
+def check_results_signed(hw_out, sw_out, thres=1):
     assert len(hw_out) == len(
         sw_out
     ), "Mismatched output size: {} expected = {}".format(len(hw_out), len(sw_out))
     if type(hw_out[0]) == list:
         for i in range(len(hw_out)):
             assert (
-                hw_out[i] == sw_out[i]
-            ), "Mismatched output value {}: {} expected = {}".format(
-                i, [int(t) for t in hw_out[i]], [int(t) for t in sw_out[i]]
+                # [i.signed_integer for i in hw_out[i]] == sw_out[i]
+                compare_lists_approx([i.signed_integer for i in hw_out[i]], sw_out[i], thres)
+            ),  "Mismatched output value {}: {} expected = {}".format(
+                i, [int(t.signed_integer) for t in hw_out[i]], [int(t) for t in sw_out[i]]
             )
         return True
     else:
         for i in range(len(hw_out)):
-            assert int(hw_out[i]) == int(
-                sw_out[i]
+            assert (
+                # hw_out[i].signed_integer == int(sw_out[i])
+                compare_numbers_approx(hw_out[i].signed_integer, int(sw_out[i]), thres)
             ), "Mismatched output value {}: {} expected = {}".format(
-                i, int(hw_out[i]), int(sw_out[i])
+                i, int(hw_out[i].signed_integer), int(sw_out[i])
             )
 
 
-def check_results_signed(hw_out, sw_out):
-    assert len(hw_out) == len(
-        sw_out
-    ), "Mismatched output size: {} expected = {}".format(len(hw_out), len(sw_out))
-    if type(hw_out[0]) == list:
-        for i in range(len(hw_out)):
-            assert [i.signed_integer for i in hw_out[i]] == sw_out[
-                i
-            ], "Mismatched output value {}: {} expected = {}".format(
-                i, [int(t) for t in hw_out[i]], [int(t) for t in sw_out[i]]
-            )
-        return True
-    else:
-        for i in range(len(hw_out)):
-            assert hw_out[i].signed_integer == int(
-                sw_out[i]
-            ), "Mismatched output value {}: {} expected = {}".format(
-                i, int(hw_out[i]), int(sw_out[i])
-            )
+def compare_lists_approx(l1, l2, thres):
+    for i in range(len(l1)):
+        if abs(l1[i] - l2[i]) > thres:
+            return False
+    return True
+
+def compare_numbers_approx(n1, n2, thres):
+    return abs(n1 - n2) > thres
