@@ -44,6 +44,7 @@ class RandomSource:
             self.rand_gen = lambda: random.randint(-2**14, 2**14)
         else:
             self.rand_gen = lambda: random.randint(-random.randint(15, 30), random.randint(15, 30))
+            # self.rand_gen = lambda: random.randint(-1,1)
             # self.rand_gen = lambda: random.randint(1,1)
 
         if len(data_specify) == 0:
@@ -214,4 +215,4 @@ def compare_lists_approx(l1, l2, thres):
     return True
 
 def compare_numbers_approx(n1, n2, thres):
-    return abs(n1 - n2) > thres
+    return abs(n1 - n2) <= thres

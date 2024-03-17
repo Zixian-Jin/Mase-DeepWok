@@ -21,6 +21,7 @@ MASE_HW_DEPS = {
     "llm/quantizer": ["llm", "cast", "common", "fixed_arithmetic"],
     "llm/quantizer_top": ["llm", "cast", "common", "fixed_arithmetic"],
     "llm/find_max": ["llm", "common"],
+    "llm/fixed_matmul_core_quantized": ["llm", "fixed_arithmetic", "cast", "linear", "matmul", "common"],
     # TODO: Failing test: missing "z_proj" in config?
     # "attention/fixed_self_att": ["attention", "cast", "common", "conv",
     #                              "fixed_arithmetic", "linear", "matmul", "ViT"],
