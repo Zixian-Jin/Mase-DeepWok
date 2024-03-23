@@ -38,7 +38,7 @@ logic [MAX_NUM_WIDTH-1:0] max_reg;
 find_max #(
     .IN_WIDTH(IN_WIDTH),  // FP16
     .IN_SIZE(IN_SIZE),  // in cols
-    .IN_PARALLELISM(IN_PARALLELISM), // in rows
+    .IN_PARALLELISM(IN_PARALLELISM) // in rows
 ) find_max_inst(
     .clk(clk),
     .rst(rst),
@@ -63,7 +63,7 @@ quantizer_part #(
     .IN_WIDTH(IN_WIDTH),  // FP16
     .IN_SIZE(IN_SIZE),  // in cols
     .IN_PARALLELISM(IN_PARALLELISM),// in rows
-    .OUT_WIDTH(OUT_WIDTH), // int8
+    .OUT_WIDTH(OUT_WIDTH) // int8
 ) quantizer_part_inst(
     .clk(clk),
     .rst(rst),

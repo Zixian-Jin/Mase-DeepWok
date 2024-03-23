@@ -59,7 +59,7 @@ module scatter #(
         assign data_out_small[IN_SIZE*(i+1)-1 :IN_SIZE*i] = current_data_out_small[IN_SIZE-1 :0];
 
         for (genvar j = 0; j < IN_SIZE; j = j + 1) begin: COL
-            always_ff begin
+            always_comb begin
                 if (ind_table[i*IN_SIZE + j] == 1'b0) begin
                     // small number, allocated to small column
                     current_data_out_small[j] = current_data_in[j];

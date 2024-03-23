@@ -8,9 +8,6 @@ module find_max #(
     parameter OUT_WIDTH = IN_WIDTH, // buffer_input FP16
     parameter OUT_ROWS = IN_PARALLELISM,
     parameter OUT_COLUMNS = IN_SIZE,
-
-    parameter QUANTIZATION_WIDTH = OUT_WIDTH,
-
     parameter MAX_NUM_WIDTH = IN_WIDTH
 ) (
     input clk,
@@ -58,7 +55,7 @@ split2 #(
 
 fixed_comparator_tree #(
     .IN_SIZE(IN_SIZE*IN_PARALLELISM),
-    .IN_WIDTH(IN_WIDTH),
+    .IN_WIDTH(IN_WIDTH)
 )fixed_comparator_tree_inst(
     .clk(clk),
     .rst(rst),
