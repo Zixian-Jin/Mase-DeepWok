@@ -10,7 +10,7 @@ module dequantizer #(
     parameter OUT_ROWS = IN_PARALLELISM,
     parameter OUT_COLUMNS = IN_SIZE,
 
-    parameter QUANTIZATION_WIDTH = 8,
+    parameter QUANTIZATION_WIDTH = 16,
     parameter MAX_NUM_WIDTH = 32
 ) (
     input clk,
@@ -21,7 +21,9 @@ module dequantizer #(
     input data_in_valid,
     output data_in_ready,
 
-    input [MAX_NUM_WIDTH-1:0] max_num, //TODO: change datatype
+    input [MAX_NUM_WIDTH-1:0] max_num, //TODO: change datatype,
+    // input max_num_valid,
+    // output max_num_ready,
 
     // data_out
     output [OUT_WIDTH-1:0] data_out      [OUT_ROWS * OUT_COLUMNS - 1 :0],
@@ -30,6 +32,13 @@ module dequantizer #(
 );
 
 
+// logic dequant_join_valid, dequant_join_ready;
+// join2 #() dequant_join_inst (
+//     .data_in_ready ({data_in_ready, max_num_ready}),
+//     .data_in_valid ({data_in_valid, max_num_valid}),
+//     .data_out_valid(dequant_join_valid),
+//     .data_out_ready(dequant_join_ready)
+// );
 
 
 localparam RESHAPE_FACTOR_FRAC_WIDITH = 16;
@@ -38,16 +47,16 @@ logic [IN_WIDTH + MAX_NUM_WIDTH+RESHAPE_FACTOR_FRAC_WIDITH-1:0] data_out_unround
 logic [QUANTIZATION_WIDTH-1:0] scale_constant;
 
 // assign scale_constant = (1 << QUANTIZATION_WIDTH)-1;
-assign scale_constant = 8'b01111111;
+// assign scale_constant = 8'b01111111;
+assign scale_constant = 16'h3F01;
 
-
-for (genvar i = 0; i < IN_SIZE * IN_PARALLELISM; i = i + 1) begin: QUANTIZE
+for (genvar i = 0; i < IN_SIZE * IN_PARALLELISM; i = i + 1) begin: DEQUANTIZE
     fixed_mult #(
     .IN_A_WIDTH(IN_WIDTH),
     .IN_B_WIDTH(MAX_NUM_WIDTH)
     ) fixed_mult_inst(
     .data_a(data_in[i]),
-    .data_b(max_num),
+    .data_b(max_num),                                                                         
     .product(data_out_unrounded[i])
     );
 
@@ -74,6 +83,9 @@ fixed_rounding #(
     .data_out(data_out) 
 );
 
+
+assign data_out_valid = data_in_valid;
+assign data_in_ready = data_out_ready; // TODO: NOT ALLOWED FOR SEQUENTIAL LOGIC!!!!!!!!!!!!!
 endmodule
 
 
