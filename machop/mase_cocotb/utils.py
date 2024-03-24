@@ -45,3 +45,17 @@ def floor_rounding(value, in_frac_width, out_frac_width):
     elif in_frac_width < out_frac_width:
         return value << (in_frac_width - out_frac_width)
     return value
+
+
+def large_num_generator(large_num_thres=127, large_num_limit=500, large_num_prob=0.1):
+    '''
+        Generator large numbers & small numbers with a given probability distribution.
+        Default: 500 >= abs(large number) >= 128
+    '''
+    if (random.random() < large_num_prob):
+        if random.random() < 0.5:
+            return random.randint(large_num_thres+1, large_num_limit)
+        else:
+            return random.randint(-large_num_limit, -(large_num_thres+1))
+    else:
+        return random.randint(-large_num_thres, large_num_thres)
