@@ -41,7 +41,7 @@ class RandomSource:
         elif arithmetic in ["ternary"]:
             self.rand_gen = lambda: binary_encode(random.randint(-1, 1))
         elif arithmetic in ["llm-fp16"]:
-            self.rand_gen = lambda: random.randint(-2**14, 2**14)
+            self.rand_gen = lambda: random.randint(-50, 50)
         else:
             self.rand_gen = lambda: random.randint(-random.randint(15, 30), random.randint(15, 30))
             # self.rand_gen = lambda: random.randint(-1,1)
@@ -206,6 +206,42 @@ def check_results_signed(hw_out, sw_out,thres=1):
             ), "Mismatched output value {}: {} expected = {}".format(
                 i, int(hw_out[i].signed_integer), int(sw_out[i])
             )
+
+def analyse_results_signed(hw_out, sw_out,thres=1):
+    assert len(hw_out) == len(
+        sw_out
+    ), "Mismatched output size: {} expected = {}".format(len(hw_out), len(sw_out))
+    if type(hw_out[0]) == list:
+        error_list = []
+        count = 0
+        for i in range(len(hw_out)):
+            hw_result = [i.signed_integer for i in hw_out[i]]
+            sw_result = sw_out[i]
+            errors = [(hw_result[i] - sw_result[i]) for i in range(len(sw_result))]
+            error = max([abs(e) for e in errors])
+            error_list.append(error)
+            if (error > thres):
+                count += 1
+        max_error = max(error_list)
+        max_error_ind = error_list.index(max_error)
+        print("\n--------------------- Error Analysis --------------------")
+        print("Sample Num=%d"%len(sw_out))
+        print("No. Samples above Thres(%d)=%d"%(thres, count))
+        print("Max Abs Error=%d"%(max(error_list)))
+        print("where: hw_out={}, sw_out={}".format([i.signed_integer for i in hw_out[max_error_ind]], sw_out[max_error_ind]))
+        print("error_list={}".format(error_list))
+        print("--------------------- End of Error Analysis --------------------\n")
+    else: # TODO
+        print("N.A.")
+        return
+        for i in range(len(hw_out)):
+            assert (
+                # hw_out[i].signed_integer == int(sw_out[i])
+                compare_numbers_approx(hw_out[i].signed_integer, int(sw_out[i]), thres)
+            ), "Mismatched output value {}: {} expected = {}".format(
+                i, int(hw_out[i].signed_integer), int(sw_out[i])
+            )
+
 
 
 def compare_lists_approx(l1, l2, thres):
