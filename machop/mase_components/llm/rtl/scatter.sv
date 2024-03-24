@@ -43,7 +43,7 @@ module scatter #(
         .ind_table (ind_table),
         .data_out (reg_data_in),
         .data_out_valid (reg_data_in_valid),
-        .data_out_ready (data_out_valid)
+        .data_out_ready (data_out_ready)
     );
         
     // Assumes that if a large number occurs at the first row, then the rest entries in that column are all large numbers
@@ -97,8 +97,7 @@ module scatter #(
     //         data_out_valid <= 1;
     //     end
     // end
-    assign data_in_ready = !rst;
-    assign data_out_valid = !rst && data_in_valid; //&& (ROW[0].counter == IN_SIZE);
+    assign data_out_valid = !rst && reg_data_in_valid; //&& (ROW[0].counter == IN_SIZE);
     // assign data_out_small = reg_out_small;
     // assign data_out_large = reg_out_large;
 endmodule

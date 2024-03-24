@@ -50,6 +50,6 @@ module mask #(
     //         data_out_valid <= 1;
     //     end
     // end
-    assign data_in_ready = !rst;
+    assign data_in_ready = !rst && data_out_ready;
     assign data_out_valid = !rst && data_in_valid;
 endmodule

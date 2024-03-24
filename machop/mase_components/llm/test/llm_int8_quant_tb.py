@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+
 # This script tests the fixed point linear
-import os, math, logging
-import sys
+
+# Manually add mase_cocotb to system path
+import sys, os
 try:
     p = os.getenv("MASE_RTL")
     assert p != None
@@ -12,7 +14,34 @@ except:
 p = os.path.join(p, '../')
 sys.path.append(p)
 ###############################################
+import os, math, logging
+
 from mase_cocotb.random_test import *
+from mase_cocotb.runner import mase_runner
+
+import cocotb
+from cocotb.triggers import Timer
+from cocotb.triggers import FallingEdge
+from cocotb.clock import Clock
+
+debug = True
+
+logger = logging.getLogger("tb_signals")
+if debug:
+    logger.setLevel(logging.DEBUG)
+
+
+
+
+
+
+#!/usr/bin/env python3
+
+# This script tests the fixed point linear
+import os, math, logging
+import sys
+sys.path.append('/home/ic/TEMP/mase/machop/')
+from mase_cocotb.random_test import RandomSource, RandomSink, check_results
 from mase_cocotb.runner import mase_runner
 
 import cocotb
@@ -51,7 +80,7 @@ class VerificationCase:
             num=self.in_rows * self.in_columns,
             max_stalls=0,
             debug=debug,
-            arithmetic="llm-fp16"
+            # arithmetic="llm-fp16"
         )
         self.weight = RandomSource(
             name="weight",
@@ -59,7 +88,7 @@ class VerificationCase:
             num=self.weight_rows * self.weight_columns,
             max_stalls=0,
             debug=debug,
-            arithmetic="llm-fp16"
+            # arithmetic="llm-fp16",
         )
         self.bias = RandomSource(
             name="bias",
@@ -84,19 +113,13 @@ class VerificationCase:
 
     def get_dut_parameters(self):
         return {
-            "IN1_WIDTH": self.data_in_width,
-            "IN1_FRAC_WIDTH": self.data_in_frac_width,
-            "IN2_WIDTH": self.weight_width,
-            "IN2_FRAC_WIDTH": self.weight_frac_width,
-            "BIAS_WIDTH": self.bias_width,
-            "BIAS_FRAC_WIDTH": self.bias_frac_width,
-            "HAS_BIAS": self.has_bias,
-            "OUT_WIDTH": self.data_out_width,
-            "OUT_FRAC_WIDTH": self.data_out_frac_width,
-            "IN1_PARALLELISM": self.in_rows,
+            "IN_WIDTH": self.data_in_width,
             "IN_SIZE": self.in_columns,
-            "IN2_PARALLELISM": self.weight_columns,
+            "IN_PARALLELISM": self.in_rows,
+            "WEIGHT_PARALLELISM": self.weight_columns,
+            "HAS_BIAS": self.has_bias,
             "IN_DEPTH": self.iterations,
+            "OUT_WIDTH": self.data_out_width
         }
 
     def sw_compute(self):
@@ -154,10 +177,10 @@ def debug_state(dut, state):
     logger.debug(
         "{} State: (w_ready,w_valid,in_ready,in_valid,out_ready,out_valid) = ({},{},{},{},{},{})".format(
             state,
-            dut.data_in1_ready.value,
-            dut.data_in2_valid.value,
-            dut.data_in1_ready.value,
-            dut.data_in1_valid.value,
+            dut.data_in_ready.value,
+            dut.weight_valid.value,
+            dut.data_in_ready.value,
+            dut.data_in_valid.value,
             dut.data_out_ready.value,
             dut.data_out_valid.value,
         )
@@ -165,7 +188,7 @@ def debug_state(dut, state):
 
 
 @cocotb.test()
-async def test_fixed_matmul_core_quantized(dut):
+async def test_llm_int8_quant_tb(dut):
     """Test integer based vector mult"""
     samples = 100
     test_case = VerificationCase(samples=samples)
@@ -183,8 +206,8 @@ async def test_fixed_matmul_core_quantized(dut):
     await Timer(500, units="ns")
 
     # Synchronize with the clock
-    dut.data_in2_valid.value = 0
-    dut.data_in1_valid.value = 0
+    dut.weight_valid.value = 0
+    dut.data_in_valid.value = 0
     dut.data_out_ready.value = 1
     debug_state(dut, "Pre-clk")
     await FallingEdge(dut.clk)
@@ -199,8 +222,8 @@ async def test_fixed_matmul_core_quantized(dut):
         await FallingEdge(dut.clk)
         debug_state(dut, "Post-clk")
         dut.bias_valid.value = test_case.bias.pre_compute()
-        dut.data_in2_valid.value = test_case.weight.pre_compute()
-        dut.data_in1_valid.value = test_case.data_in.pre_compute()
+        dut.weight_valid.value = test_case.weight.pre_compute()
+        dut.data_in_valid.value = test_case.data_in.pre_compute()
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.pre_compute(
             dut.data_out_valid.value
@@ -208,14 +231,14 @@ async def test_fixed_matmul_core_quantized(dut):
         debug_state(dut, "Pre-clk")
         await Timer(1, units="ns")
         debug_state(dut, "Post-clk")
-        dut.bias_valid.value, dut.bias.value = test_case.bias.compute(
-            dut.bias_ready.value
+        # dut.bias_valid.value, dut.bias.value = test_case.bias.compute(
+        #     dut.bias_ready.value
+        # )
+        dut.weight_valid.value, dut.weight.value = test_case.weight.compute(
+            dut.weight_ready.value
         )
-        dut.data_in2_valid.value, dut.data_in2.value = test_case.weight.compute(
-            dut.data_in2_ready.value
-        )
-        dut.data_in1_valid.value, dut.data_in1.value = test_case.data_in.compute(
-            dut.data_in1_ready.value
+        dut.data_in_valid.value, dut.data_in.value = test_case.data_in.compute(
+            dut.data_in_ready.value
         )
         await Timer(1, units="ns")
         dut.data_out_ready.value = test_case.outputs.compute(
@@ -224,7 +247,7 @@ async def test_fixed_matmul_core_quantized(dut):
         # breakpoint()
         debug_state(dut, "Pre-clk")
         if (
-            # test_case.bias.is_empty()
+            # test_case.bias.is_empty()  // TODO
             test_case.weight.is_empty()
             and test_case.data_in.is_empty()
             and test_case.outputs.is_full()
@@ -234,7 +257,8 @@ async def test_fixed_matmul_core_quantized(dut):
     assert (
         done
     ), "Deadlock detected or the simulation reaches the maximum cycle limit (fixed it by adjusting the loop trip count)"
-    # check_results_signed(test_case.outputs.data, test_case.ref, 10)
+
+    # check_results_signed(test_case.outputs.data, test_case.ref, 0)
     analyse_results_signed(test_case.outputs.data, test_case.ref, 10)
 
 
@@ -244,3 +268,4 @@ if __name__ == "__main__":
         module_param_list=[tb.get_dut_parameters()],
         extra_build_args=["--unroll-count", "3000"],
     )
+
