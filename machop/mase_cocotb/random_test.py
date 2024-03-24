@@ -40,10 +40,13 @@ class RandomSource:
             self.rand_gen = lambda: binary_encode(random.choice([-1, 1]))
         elif arithmetic in ["ternary"]:
             self.rand_gen = lambda: binary_encode(random.randint(-1, 1))
-        elif arithmetic in ["llm-fp16"]:
-            self.rand_gen = lambda: random.randint(-50, 50)
+        elif arithmetic in ["llm-fp16-datain"]:
+            self.rand_gen = lambda: random.randint(-200, 200)
+        elif arithmetic in ["llm-fp16-weight"]:
+            self.rand_gen = lambda: random.randint(-8, 8)
         else:
-            self.rand_gen = lambda: random.randint(-random.randint(15, 30), random.randint(15, 30))
+            self.rand_gen = lambda: random.randint(-3, 3)
+            # self.rand_gen = lambda: random.randint(-random.randint(15, 30), random.randint(15, 30))
             # self.rand_gen = lambda: random.randint(-1,1)
             # self.rand_gen = lambda: random.randint(1,1)
 
