@@ -32,9 +32,9 @@ module fp16_comparator # (
 
     always_comb begin
         if (sign) begin // negative
-            result_reg = (!data_in[14]) || (!data_in[13]);
+            result_reg = (!(& data_in[14:7])) || (data_in[7]); // -128 is treated as large number //(!data_in[14]) || (!data_in[13]);
         end else begin  // positive
-            result_reg = data_in[14] || data_in[13];
+            result_reg = | data_in[14:7];
         end
     end
 
