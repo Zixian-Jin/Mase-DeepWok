@@ -70,7 +70,7 @@ fixed_comparator_tree #(
 
 
 logic [IN_WIDTH-1 :0] data_in_buffered [IN_SIZE*IN_PARALLELISM-1 :0]; 
-localparam CMP_TREE_DELAY = $clog2(IN_SIZE*IN_PARALLELISM) + 1;  // increased by 1 so the fifo is never full
+localparam CMP_TREE_DELAY = $clog2(IN_SIZE*IN_PARALLELISM) + 10;  // increased by 10 so the fifo is never full
 
 for (genvar i = 0; i < IN_SIZE * IN_PARALLELISM; i = i + 1) begin: PARALLEL_FIFO
     logic fifo_in_valid, fifo_in_ready;

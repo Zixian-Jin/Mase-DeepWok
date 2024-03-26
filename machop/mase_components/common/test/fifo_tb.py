@@ -3,7 +3,21 @@
 # This script tests the fixed point dot product
 import os, logging
 
-from mase_cocotb.random_test import RandomSource, RandomSink, check_results
+
+# Manually add mase_cocotb to system path
+import sys, os
+try:
+    p = os.getenv("MASE_RTL")
+    assert p != None
+except:
+    p = os.getenv("mase_rtl")
+    assert p != None
+p = os.path.join(p, '../')
+sys.path.append(p)
+###############################################
+
+
+from mase_cocotb.random_test import *
 from mase_cocotb.runner import mase_runner
 
 import cocotb
@@ -57,12 +71,12 @@ class VerificationCase:
 # Check if an is_impossible state is reached
 def debug_state(dut, state):
     logger.debug(
-        "{} State: (in_ready,in_valid,data_out_ready,data_out_valid) = ({},{},{},{})".format(
+        "{} State: (in_ready,in_valid,out_ready,out_valid) = ({},{},{},{})".format(
             state,
-            dut.data_in_ready.value,
-            dut.data_in_valid.value,
-            dut.data_out_ready.value,
-            dut.data_out_valid.value,
+            dut.in_ready.value,
+            dut.in_valid.value,
+            dut.out_ready.value,
+            dut.out_valid.value,
         )
     )
 
@@ -86,8 +100,8 @@ async def test_fifo(dut):
     await Timer(500, units="ns")
 
     # Synchronize with the clock
-    dut.data_in_valid.value = 0
-    dut.data_out_ready.value = 1
+    dut.in_valid.value = 0
+    dut.out_ready.value = 1
 
     await Timer(1, units="ns")
 
@@ -100,16 +114,16 @@ async def test_fifo(dut):
     for i in range(samples * 20):
         await FallingEdge(dut.clk)
         debug_state(dut, "Post-clk")
-        dut.data_in_valid.value = test_case.data_in.pre_compute()
+        dut.in_valid.value = test_case.data_in.pre_compute()
         await Timer(1, units="ns")
-        dut.data_out_ready.value = test_case.outputs.pre_compute(dut.data_out_valid)
+        dut.out_ready.value = test_case.outputs.pre_compute(dut.out_valid)
         await Timer(1, units="ns")
-        dut.data_in_valid.value, dut.data_in.value = test_case.data_in.compute(
-            dut.data_in_ready.value
+        dut.in_valid.value, dut.in_data.value = test_case.data_in.compute(
+            dut.in_ready.value
         )
         await Timer(1, units="ns")
-        dut.data_out_ready.value = test_case.outputs.compute(
-            dut.data_out_valid.value, dut.data_out.value
+        dut.out_ready.value = test_case.outputs.compute(
+            dut.out_valid.value, dut.out_data.value
         )
         await Timer(1, units="ns")
         debug_state(dut, "Pre-clk")
@@ -121,7 +135,7 @@ async def test_fifo(dut):
     assert (
         done
     ), "Deadlock detected or the simulation reaches the maximum cycle limit (fixed it by adjusting the loop trip count)"
-    check_results(test_case.outputs.data, test_case.ref)
+    check_results_signed(test_case.outputs.data, test_case.ref)
 
 
 if __name__ == "__main__":
