@@ -160,7 +160,8 @@ module llm_int8 #(
         .data_out_ready(matmul_small_ready)
     );
 
-    for (genvar i = 0; i < OUT_ROWS * OUT_COLUMNS; i = i + 1) begin: MatrixAddition
+    // Gather operation
+    for (genvar i = 0; i < OUT_ROWS * OUT_COLUMNS; i = i + 1) begin: GATHER
         assign data_out[i] = matmul_large[i] + matmul_small[i];
     end
 

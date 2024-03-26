@@ -80,7 +80,7 @@ class VerificationCase:
             num=self.in_rows * self.in_columns,
             max_stalls=0,
             debug=debug,
-            # arithmetic="llm-fp16"
+            arithmetic="llm-fp16-datain"
         )
         self.weight = RandomSource(
             name="weight",
@@ -88,7 +88,7 @@ class VerificationCase:
             num=self.weight_rows * self.weight_columns,
             max_stalls=0,
             debug=debug,
-            # arithmetic="llm-fp16",
+            arithmetic="llm-fp16-weight",
         )
         self.bias = RandomSource(
             name="bias",

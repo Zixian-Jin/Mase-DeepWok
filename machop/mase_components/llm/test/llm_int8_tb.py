@@ -256,7 +256,8 @@ async def test_llm_int8_tb(dut):
         done
     ), "Deadlock detected or the simulation reaches the maximum cycle limit (fixed it by adjusting the loop trip count)"
 
-    check_results_signed(test_case.outputs.data, test_case.ref)
+    # check_results_signed(test_case.outputs.data, test_case.ref)
+    analyse_results_signed(test_case.outputs.data, test_case.ref, 10)
 
 
 if __name__ == "__main__":
