@@ -124,42 +124,7 @@ module fixed_linear_dequant #(
     );
 
 
-
-
-    /**************************************************************/
     /******* Dequantization*******/
-
-    /******* max num multiplication *******/
-    localparam MAX_NUM_WIDTH = DATA_IN_0_PRECISION_0 + WEIGHT_PRECISION_0;  //TODO
-    logic [MAX_NUM_WIDTH-1: 0] max_num; 
-    fixed_mult #(
-        .IN_A_WIDTH (DATA_IN_0_PRECISION_0),
-        .IN_B_WIDTH (WEIGHT_PRECISION_0)
-    ) max_num_mult_inst (
-        .data_a (data_in_0_max_num),
-        .data_b (weight_max_num),
-        .product (max_num)
-    );
-
-    /************ FIFO buffering *************/
-    logic [MAX_NUM_WIDTH-1: 0] max_num_buffered;
-    logic max_num_buffered_ready, max_num_buffered_valid;
-    localparam FMM_DELAY = DATA_IN_0_PARALLELISM_DIM_0 * 10;  //TODO: fifo depth too large?
-    fifo #(
-        .DEPTH (FMM_DELAY+1),
-        .DATA_WIDTH (MAX_NUM_WIDTH)
-    ) data_in_fifo_inst (
-        .clk (clk),
-        .rst (rst),
-        .in_data (max_num),
-        .in_valid (data_in_0_valid),   //TODO: assume din1_max_num & din2_max_num arrive in sync
-        // .in_ready (data_in1_int8_out_ready),
-        .out_data (max_num_buffered),
-        .out_valid (max_num_buffered_valid),
-        .out_ready (max_num_buffered_ready)
-        // .empty (fifo_empty)
-    );
-
     // TODO: dequantizer vs. dequantizer_single?
     // Reshape input and output data of dequantizer to fit in the module port format
     logic [FDP_WIDTH-1:0] fdp_data_out_array[0:0];
@@ -167,8 +132,9 @@ module fixed_linear_dequant #(
     assign fdp_data_out_array[0] = fdp_data_out;
     assign fdp_dequant_out = fdp_dequant_out_array[0];
 
-
     logic dequantizer_in_valid, dequantizer_in_ready;
+    logic max_num_buffered_valid, max_num_buffered_ready;
+    assign max_num_buffered_valid = max_num_buffered_valid_join;  // broadcast valid siganl from the shared FIFO
     join2 #(
     ) dequant_join (
         .data_in_valid ({max_num_buffered_valid, fdp_data_out_valid}),
@@ -198,10 +164,6 @@ module fixed_linear_dequant #(
         .data_out_ready (fdp_dequant_out_ready)
     );
     /************************ End of Dequantization ******************/
-    /**************************************************************/
-
-
-
 
     /* verilator lint_off UNUSEDSIGNAL */
     logic acc_data_out_valid, acc_data_out_ready;
@@ -226,6 +188,43 @@ module fixed_linear_dequant #(
     // pick one of the valid signal to use.
     assign acc_data_out_ready = acc_ready;
   end
+
+    /******* max num multiplication & FIFO buffering *******/
+    localparam MAX_NUM_WIDTH = DATA_IN_0_PRECISION_0 + WEIGHT_PRECISION_0;  //TODO
+    logic [MAX_NUM_WIDTH-1: 0] max_num; 
+    fixed_mult #(
+        .IN_A_WIDTH (DATA_IN_0_PRECISION_0),
+        .IN_B_WIDTH (WEIGHT_PRECISION_0)
+    ) max_num_mult_inst (
+        .data_a (data_in_0_max_num),
+        .data_b (weight_max_num),
+        .product (max_num)
+    );
+
+    logic [MAX_NUM_WIDTH-1: 0] max_num_buffered;
+    logic max_num_buffered_ready_join, max_num_buffered_valid_join;
+    // Assume the parallelised FDP and ACC module in "linear" loop always have 
+    // the same valid & ready state, so we can just pick one of the ready signal to use.
+    assign max_num_buffered_ready_join = linear[0].max_num_buffered_ready;
+    localparam FMM_DELAY = DATA_IN_0_PARALLELISM_DIM_0 * 10;  //TODO: fifo depth too large?
+    fifo #(
+        .DEPTH (FMM_DELAY+1),
+        .DATA_WIDTH (MAX_NUM_WIDTH)
+    ) data_in_fifo_inst (
+        .clk (clk),
+        .rst (rst),
+        .in_data (max_num),
+        .in_valid (data_in_0_valid),   //TODO: assume din1_max_num & din2_max_num arrive in sync
+        // .in_ready (data_in1_int8_out_ready),
+        .out_data (max_num_buffered),
+        .out_valid (max_num_buffered_valid_join),
+        .out_ready (max_num_buffered_ready_join)
+    );
+
+
+
+
+
 
 
   if (HAS_BIAS == 1) begin
