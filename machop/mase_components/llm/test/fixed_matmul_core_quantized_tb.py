@@ -71,16 +71,16 @@ class VerificationCase:
         self.outputs = RandomSink(samples=samples, max_stalls=0, debug=debug)
         self.samples = samples
         self.ref = self.sw_compute()
-        # self.ref = self.sw_cast(
-        #     inputs=self.ref,
-        #     in_width=self.data_in_width
-        #     + self.weight_width
-        #     + math.ceil(math.log2(self.iterations * self.in_columns))
-        #     + self.has_bias,
-        #     in_frac_width=self.data_in_frac_width + self.weight_frac_width,
-        #     out_width=self.data_out_width,
-        #     out_frac_width=self.data_out_frac_width,
-        # )
+        self.ref = self.sw_cast(
+            inputs=self.ref,
+            in_width=self.data_in_width
+                    + self.weight_width
+                    + math.ceil(math.log2(self.iterations * self.in_columns))
+                    + self.has_bias,
+            in_frac_width=self.data_in_frac_width + self.weight_frac_width,
+            out_width=self.data_out_width,
+            out_frac_width=self.data_out_frac_width,
+        )
 
     def get_dut_parameters(self):
         return {
@@ -132,20 +132,8 @@ class VerificationCase:
             out_list = []
             for i in range(0, len(in_list)):
                 in_value = in_list[i]
-                if in_frac_width > out_frac_width:
-                    in_value = in_value >> (in_frac_width - out_frac_width)
-                else:
-                    in_value = in_value << (out_frac_width - in_frac_width)
-                in_int_width = in_width - in_frac_width
-                out_int_width = out_width - out_frac_width
-                if in_int_width > out_int_width:
-                    if in_value >> (in_frac_width + out_int_width) > 0:
-                        in_value = 1 << out_width - 1
-                    elif in_value >> (in_frac_width + out_int_width) < 0:
-                        in_value = -(1 << out_width - 1)
-                    else:
-                        in_value = int(in_value % (1 << out_width))
-                out_list.append(in_value)
+                out_value = fixed_cast(in_value, in_width, in_frac_width, out_width, out_frac_width)
+                out_list.append(out_value)
             outputs.append(out_list)
         return outputs
 

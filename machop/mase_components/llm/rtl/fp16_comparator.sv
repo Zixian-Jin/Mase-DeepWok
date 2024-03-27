@@ -21,22 +21,39 @@
 
 // for fixed-point 16
 module fp16_comparator # (
-    parameter THRES = 30  // currently deprecated
+    parameter IN_WIDTH = 16,
+    parameter IN_FRAC_WIDTH = 0,
+    parameter THRES = 127  // currently deprecated
 )(
-    input [16-1: 0] data_in,  // by default ap_int<16>
+    input [IN_WIDTH-1: 0] data_in,  // by default ap_int<16>
     output result
 );
-    logic sign;
-    assign sign = data_in[15];
-    logic result_reg;
-
-    always_comb begin
-        if (sign) begin // negative
-            result_reg = (!(& data_in[14:7])) || (data_in[7:0] == 8'b1000_0000); // -128 is treated as large number //(!data_in[14]) || (!data_in[13]);
-        end else begin  // positive
-            result_reg = | data_in[14:7];
-        end
+    initial begin
+        assert (IN_WIDTH - IN_FRAC_WIDTH > 1) else $fatal("IN_WIDTH must be larger than IN_FRAC_WIDTH!");
+        assert (THRES > 0) else $fatal ("THRES must be positive!");
     end
 
-    assign result = result_reg;
+    // retrieve integer part of data_in
+    localparam IN_INT_WIDTH = IN_WIDTH - IN_FRAC_WIDTH;
+    logic [IN_INT_WIDTH-1 :0] data_in_int;
+    assign data_in_int = data_in[IN_WIDTH-1: IN_FRAC_WIDTH];
+
+    logic sign;
+    assign sign = data_in[IN_WIDTH-1];
+    
+    // find absolute value
+    logic [IN_INT_WIDTH-1 :0] data_in_int_abs;
+    assign data_in_int_abs = (sign == 1'b1) ? -$signed(data_in_int) : data_in_int;
+
+    assign result = (data_in_int_abs > THRES) ? 1'b1 : 1'b0;
+
+    // logic result_reg;
+    // always_comb begin
+    //     if (sign) begin // negative
+    //         result_reg = (!(& data_in[14:7])) || (data_in[7:0] == 8'b1000_0000); // -128 is treated as large number //(!data_in[14]) || (!data_in[13]);
+    //     end else begin  // positive
+    //         result_reg = | data_in[14:7];
+    //     end
+    // end
+    // assign result = result_reg;
 endmodule

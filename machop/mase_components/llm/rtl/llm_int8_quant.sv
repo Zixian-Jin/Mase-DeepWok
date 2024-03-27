@@ -18,7 +18,8 @@ module llm_int8_quant #(
     parameter OUT_COLUMNS = WEIGHT_PARALLELISM,
 
     parameter IN_DEPTH = 3,
-    parameter QUANTIZATION_WIDTH = 8  // int8
+    parameter QUANTIZATION_WIDTH = 8,  // int8
+    parameter LARGE_NUMBER_THRES = 127  // for scattering: numbers larger than (BUT NOT EQUAL TO) this thres are counted as outliers
 ) (
     input clk,
     input rst,
@@ -47,7 +48,8 @@ module llm_int8_quant #(
     scatter #(
         .IN_WIDTH (IN_WIDTH),
         .IN_SIZE (IN_SIZE),
-        .IN_PARALLELISM (IN_PARALLELISM)
+        .IN_PARALLELISM (IN_PARALLELISM),
+        .LARGE_NUMBER_THRES (LARGE_NUMBER_THRES)
     ) scatter_data_in(
         .clk(clk),
         .rst(rst),

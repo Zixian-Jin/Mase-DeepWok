@@ -4,13 +4,11 @@
  */
 module scatter #(
     /* verilator lint_off UNUSEDPARAM */
-
-    // parameter IN_0_DEPTH = DATA_IN_0_TENSOR_SIZE_DIM_0 / DATA_IN_0_PARALLELISM_DIM_0,
     parameter IN_WIDTH = 16,  // FP16
+    parameter IN_FRAC_WIDTH = 0,
     parameter IN_SIZE = 4,  // in cols
-    parameter IN_PARALLELISM = 1  // in rows
-    // parameter OUT_LARGE_COLUMNS = 2,
-    // parameter OUT_SMALL_COLUMNS = IN_SIZE - OUT_LARGE_COLUMNS
+    parameter IN_PARALLELISM = 1,  // in rows
+    parameter LARGE_NUMBER_THRES = 127  // a number larger than (BUT NOT EQUAL TO) THRES is counted as large number (outlier)
 ) (
     input clk,
     input rst,
@@ -41,7 +39,9 @@ module scatter #(
 
             logic is_outlier;
             fp16_comparator #(
-                .IN_WIDTH (IN_WIDTH)
+                .IN_WIDTH (IN_WIDTH),
+                .IN_FRAC_WIDTH (IN_FRAC_WIDTH),
+                .THRES (LARGE_NUMBER_THRES)
             ) fp16_cmp_inst (
                 .data_in (current_data_in[j]),
                 .result (is_outlier)

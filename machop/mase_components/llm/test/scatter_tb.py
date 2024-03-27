@@ -35,8 +35,10 @@ if debug:
 class VerificationCase:
     def __init__(self, samples=10):
         self.data_in_width = 16
+        self.data_in_frac_width = 2
         self.in_rows = 20
         self.in_columns = 4
+        self.large_number_thres = 127  # number larger than (BUT NOT EUQAL TO) threshold are counted as outliers
         
         self.data_in = RandomSource(
             name="data_in",
@@ -44,29 +46,28 @@ class VerificationCase:
             num=self.in_rows * self.in_columns,
             max_stalls=0,
             debug=debug,
-            arithmetic="llm-fp16"
+            arithmetic="llm-fp16-datain"
         )
         
         self.outputs = RandomSink(samples=samples, max_stalls=0, debug=debug)
         
         self.samples = samples
         self.ref = self.sw_compute()
-        # self.ref = self.sw_cast(
-        #     inputs=self.ref,
-        #     in_width=self.data_in_width
-        #     + self.weight_width
-        #     + math.ceil(math.log2(self.iterations * self.in_columns))
-        #     + self.has_bias,
-        #     in_frac_width=self.data_in_frac_width + self.weight_frac_width,
-        #     out_width=self.data_out_width,
-        #     out_frac_width=self.data_out_frac_width,
-        # )
+        self.ref = self.sw_cast(
+            inputs=self.ref,
+            in_width=self.data_in_width,
+            in_frac_width=self.data_in_frac_width,
+            out_width=self.data_in_width,
+            out_frac_width=self.data_in_frac_width  
+        )
 
     def get_dut_parameters(self):
         return {
             "IN_WIDTH": self.data_in_width,
+            "IN_FRAC_WIDTH": self.data_in_frac_width,
             "IN_PARALLELISM": self.in_rows,
             "IN_SIZE": self.in_columns,
+            "LARGE_NUMBER_THRES": self.large_number_thres
         }
 
     def sw_compute(self):
@@ -77,7 +78,8 @@ class VerificationCase:
             current_vector = [0]*len(self.data_in.data[0])
             for j in range(len(current_vector)):
                 entry = self.data_in.data[i][j]
-                if self.sw_large_number_checker(entry, pos=13):
+                entry_int = entry >> self.data_in_frac_width
+                if self.sw_large_number_checker(entry_int, thres=127):
                     # entries with large numbers are masked
                     current_vector[j] = 0
                 else:
@@ -86,9 +88,11 @@ class VerificationCase:
         ref.reverse()
         return ref
 
-    def sw_large_number_checker(self, data, pos=14):
+    def sw_large_number_checker(self, data, thres):
         # MSB checker for fixed-point 16
         # data is a signed integer
+        assert (thres > 0), "Large number threshold must be positive!"
+        return abs(data) > thres
         if (data > 0):
             return (data >= (2**pos))
         else:
@@ -101,20 +105,8 @@ class VerificationCase:
             out_list = []
             for i in range(0, len(in_list)):
                 in_value = in_list[i]
-                if in_frac_width > out_frac_width:
-                    in_value = in_value >> (in_frac_width - out_frac_width)
-                else:
-                    in_value = in_value << (out_frac_width - in_frac_width)
-                in_int_width = in_width - in_frac_width
-                out_int_width = out_width - out_frac_width
-                if in_int_width > out_int_width:
-                    if in_value >> (in_frac_width + out_int_width) > 0:
-                        in_value = 1 << out_width - 1
-                    elif in_value >> (in_frac_width + out_int_width) < 0:
-                        in_value = -(1 << out_width - 1)
-                    else:
-                        in_value = int(in_value % (1 << out_width))
-                out_list.append(in_value)
+                out_value = fixed_cast(in_value, in_width, in_frac_width, out_width, out_frac_width)
+                out_list.append(out_value)
             outputs.append(out_list)
         return outputs
 
