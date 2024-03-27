@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module llm_int8_quant #(
+module llm_int8_top #(
     parameter IN_WIDTH = 16,  // FP16
     parameter IN_SIZE = 4,  // in cols
     parameter IN_PARALLELISM = 5, // in rows
@@ -67,10 +67,6 @@ module llm_int8_quant #(
     );
 
 
-    logic weight_out_valid;
-    logic weight_out_ready;
-    assign weight_out_valid = weight_valid;
-    assign weight_ready = weight_out_ready;
 
     // set dummy bias signals 
     logic [BIAS_WIDTH-1 :0] bias[BIAS_PARALLELISM * BIAS_SIZE - 1 : 0];
@@ -88,13 +84,24 @@ module llm_int8_quant #(
     logic matmul_large_out_valid, matmul_large_out_ready;
     logic matmul_small_out_valid, matmul_small_out_ready;
 
-
     split2 #(
-    ) matmul_large_small_in_split(
+    ) matmul_large_small_data_in_split(
         .data_in_valid (data_in_out_valid),
         .data_in_ready (data_in_out_ready),
         .data_out_valid ({matmul_large_in_valid, matmul_small_in_valid}),
         .data_out_ready ({matmul_large_in_ready, matmul_small_in_ready})
+    );
+
+
+    logic weight_fmm_large_in_valid, weight_fmm_large_in_ready;
+    logic weight_fmm_small_in_valid, weight_fmm_small_in_ready;
+
+    split2 #(
+    ) matmul_large_small_weight_split(
+        .data_in_valid (weight_valid),
+        .data_in_ready (weight_ready),
+        .data_out_valid ({weight_fmm_large_in_valid, weight_fmm_small_in_valid}),
+        .data_out_ready ({weight_fmm_large_in_ready, weight_fmm_small_in_ready})
     );
 
     /* LARGE (FP16 High Precision) matrix */
@@ -119,8 +126,8 @@ module llm_int8_quant #(
         .data_in1_valid(matmul_large_in_valid),
         .data_in1_ready(matmul_large_in_ready),
         .data_in2(weight),
-        .data_in2_valid(weight_out_valid),
-        .data_in2_ready(weight_out_ready),
+        .data_in2_valid(weight_fmm_large_in_valid),
+        .data_in2_ready(weight_fmm_large_in_ready),
         .bias(bias),
         .bias_valid(bias_valid),
         .bias_ready(bias_ready),
@@ -152,8 +159,8 @@ module llm_int8_quant #(
         .data_in1_valid(matmul_small_in_valid),
         .data_in1_ready(matmul_small_in_ready),
         .data_in2(weight),
-        .data_in2_valid(weight_out_valid),
-        .data_in2_ready(weight_out_ready),
+        .data_in2_valid(weight_fmm_small_in_valid),
+        .data_in2_ready(weight_fmm_small_in_ready),
         .bias(bias),
         .bias_valid(bias_valid),
         .bias_ready(bias_ready),
