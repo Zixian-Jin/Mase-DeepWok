@@ -42,20 +42,21 @@ module fixed_linear_dequant #(
     parameter BIAS_PARALLELISM_DIM_0 = WEIGHT_PARALLELISM_DIM_0,
     parameter BIAS_PARALLELISM_DIM_1 = 1,
 
-    parameter DEQUANTIZATION_WIDTH = 16
+    parameter DEQUANTIZATION_WIDTH = 16,
+    parameter MAX_NUM_WIDTH = 16
 ) (
     input clk,
     input rst,
 
     // input port for data_inivations
     input  [DATA_IN_0_PRECISION_0-1:0] data_in_0      [DATA_IN_0_PARALLELISM_DIM_0*DATA_IN_0_PARALLELISM_DIM_1-1:0],
-    input  [DATA_IN_0_PRECISION_0-1:0] data_in_0_max_num,  // obtained from quantizer
+    input  [MAX_NUM_WIDTH-1:0] data_in_0_max_num,  // obtained from quantizer
     input data_in_0_valid,
     output data_in_0_ready,
 
     // input port for weight
     input  [WEIGHT_PRECISION_0-1:0] weight      [WEIGHT_PARALLELISM_DIM_0 * DATA_IN_0_PARALLELISM_DIM_0-1:0],
-    input  [WEIGHT_PRECISION_0-1:0] weight_max_num,  // obtained from quantizer
+    input  [MAX_NUM_WIDTH-1:0] weight_max_num,  // obtained from quantizer
     input weight_valid,
     output weight_ready,
 
@@ -150,7 +151,7 @@ module fixed_linear_dequant #(
         .IN_SIZE (1),  // only one entry
         .IN_PARALLELISM (1),  // only one entry
         .OUT_WIDTH (ACC_WIDTH),
-        .MAX_NUM_WIDTH (MAX_NUM_WIDTH),
+        .MAX_NUM_WIDTH (TOTAL_MAX_NUM_WIDTH),
         .QUANTIZATION_WIDTH (DEQUANTIZATION_WIDTH)
     ) dequant_inst(
         .clk (clk),
@@ -190,18 +191,18 @@ module fixed_linear_dequant #(
   end
 
     /******* max num multiplication & FIFO buffering *******/
-    localparam MAX_NUM_WIDTH = DATA_IN_0_PRECISION_0 + WEIGHT_PRECISION_0;  //TODO
-    logic [MAX_NUM_WIDTH-1: 0] max_num; 
+    localparam TOTAL_MAX_NUM_WIDTH = 2*MAX_NUM_WIDTH + 1;  // purposely leave one more bit to prevent overflow
+    logic [TOTAL_MAX_NUM_WIDTH-1: 0] max_num;   
     fixed_mult #(
-        .IN_A_WIDTH (DATA_IN_0_PRECISION_0),
-        .IN_B_WIDTH (WEIGHT_PRECISION_0)
+        .IN_A_WIDTH (MAX_NUM_WIDTH),
+        .IN_B_WIDTH (MAX_NUM_WIDTH)
     ) max_num_mult_inst (
         .data_a (data_in_0_max_num),
         .data_b (weight_max_num),
         .product (max_num)
     );
 
-    logic [MAX_NUM_WIDTH-1: 0] max_num_buffered;
+    logic [TOTAL_MAX_NUM_WIDTH-1: 0] max_num_buffered;
     logic max_num_buffered_ready_join, max_num_buffered_valid_join;
     // Assume the parallelised FDP and ACC module in "linear" loop always have 
     // the same valid & ready state, so we can just pick one of the ready signal to use.
@@ -209,7 +210,7 @@ module fixed_linear_dequant #(
     localparam FMM_DELAY = DATA_IN_0_PARALLELISM_DIM_0 * 10;  //TODO: fifo depth too large?
     fifo #(
         .DEPTH (FMM_DELAY+1),
-        .DATA_WIDTH (MAX_NUM_WIDTH)
+        .DATA_WIDTH (TOTAL_MAX_NUM_WIDTH)
     ) data_in_fifo_inst (
         .clk (clk),
         .rst (rst),

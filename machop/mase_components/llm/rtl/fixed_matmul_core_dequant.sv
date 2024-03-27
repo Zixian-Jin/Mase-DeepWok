@@ -24,18 +24,19 @@ module fixed_matmul_core_dequant #(
     parameter OUT_ROWS = IN1_PARALLELISM,
     parameter OUT_COLUMNS = IN2_PARALLELISM,
 
-    parameter DEQUANTIZATION_WIDTH = 16  //TODO: link OUT_WIDTH with DEQUANTIZATION_WIDTH
+    parameter DEQUANTIZATION_WIDTH = 16,  //TODO: link OUT_WIDTH with DEQUANTIZATION_WIDTH
+    parameter MAX_NUM_WIDTH = 16
 ) (
     input clk,
     input rst,
     //input data
     input [IN1_WIDTH-1:0] data_in1[IN1_PARALLELISM * IN_SIZE - 1:0],
-    input [IN1_WIDTH-1:0] data_in1_max_num,
+    input [MAX_NUM_WIDTH-1:0] data_in1_max_num,
     input data_in1_valid,
     output data_in1_ready,
     //input weight
     input [IN2_WIDTH-1:0] data_in2[IN_SIZE * IN2_PARALLELISM - 1:0],
-    input [IN2_WIDTH-1:0] data_in2_max_num,
+    input [MAX_NUM_WIDTH-1:0] data_in2_max_num,
     input data_in2_valid,
     output data_in2_ready,
     //input bias
@@ -95,7 +96,8 @@ module fixed_matmul_core_dequant #(
         .DATA_OUT_0_PRECISION_0(CAST_WIDTH),
 
         .HAS_BIAS(HAS_BIAS),
-        .DEQUANTIZATION_WIDTH (DEQUANTIZATION_WIDTH)
+        .DEQUANTIZATION_WIDTH (DEQUANTIZATION_WIDTH),
+        .MAX_NUM_WIDTH (MAX_NUM_WIDTH)
         /* verilator lint_off PINMISSING */
     ) fl_instance (
         .clk(clk),
