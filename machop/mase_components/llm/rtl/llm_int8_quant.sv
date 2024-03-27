@@ -2,7 +2,7 @@
 module llm_int8_quant #(
     parameter IN_WIDTH = 16,  // FP16
     parameter IN_SIZE = 4,  // in cols
-    parameter IN_PARALLELISM = 20, // in rows
+    parameter IN_PARALLELISM = 5, // in rows
 
     parameter WEIGHT_WIDTH = IN_WIDTH,  // FP16
     parameter WEIGHT_SIZE = IN_SIZE,  // in rows
@@ -19,6 +19,7 @@ module llm_int8_quant #(
 
     parameter IN_DEPTH = 3,
     parameter QUANTIZATION_WIDTH = 8,  // int8
+    parameter MAX_LARGE_NUMBERS = 10,  // for scattering: max number of outliers in the HP matrix
     parameter LARGE_NUMBER_THRES = 127  // for scattering: numbers larger than (BUT NOT EQUAL TO) this thres are counted as outliers
 ) (
     input clk,
@@ -49,6 +50,7 @@ module llm_int8_quant #(
         .IN_WIDTH (IN_WIDTH),
         .IN_SIZE (IN_SIZE),
         .IN_PARALLELISM (IN_PARALLELISM),
+        .MAX_LARGE_NUMBERS (MAX_LARGE_NUMBERS),
         .LARGE_NUMBER_THRES (LARGE_NUMBER_THRES)
     ) scatter_data_in(
         .clk(clk),

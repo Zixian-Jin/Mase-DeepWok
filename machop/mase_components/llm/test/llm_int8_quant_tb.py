@@ -75,6 +75,7 @@ class VerificationCase:
         self.weight_columns = 2
         self.iterations = 3
         
+        self.max_large_numbers = 4  # for scattering: max number of outliers scattered to the HP matrix
         self.large_number_thres = 127   # for scattering
         
         self.data_in = RandomSource(
@@ -123,6 +124,7 @@ class VerificationCase:
             "HAS_BIAS": self.has_bias,
             "IN_DEPTH": self.iterations,
             "OUT_WIDTH": self.data_out_width,
+            "MAX_LARGE_NUMBERS": self.max_large_numbers,
             "LARGE_NUMBER_THRES": self.large_number_thres
         }
 

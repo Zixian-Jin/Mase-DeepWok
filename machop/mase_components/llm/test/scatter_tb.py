@@ -35,9 +35,10 @@ if debug:
 class VerificationCase:
     def __init__(self, samples=10):
         self.data_in_width = 16
-        self.data_in_frac_width = 2
-        self.in_rows = 20
+        self.data_in_frac_width = 0
+        self.in_rows = 5
         self.in_columns = 4
+        self.max_large_numbers = 3
         self.large_number_thres = 127  # number larger than (BUT NOT EUQAL TO) threshold are counted as outliers
         
         self.data_in = RandomSource(
@@ -53,13 +54,13 @@ class VerificationCase:
         
         self.samples = samples
         self.ref = self.sw_compute()
-        self.ref = self.sw_cast(
-            inputs=self.ref,
-            in_width=self.data_in_width,
-            in_frac_width=self.data_in_frac_width,
-            out_width=self.data_in_width,
-            out_frac_width=self.data_in_frac_width  
-        )
+        # self.ref = self.sw_cast(
+        #     inputs=self.ref,
+        #     in_width=self.data_in_width,
+        #     in_frac_width=self.data_in_frac_width,
+        #     out_width=self.data_in_width,
+        #     out_frac_width=self.data_in_frac_width  
+        # )
 
     def get_dut_parameters(self):
         return {
@@ -67,50 +68,39 @@ class VerificationCase:
             "IN_FRAC_WIDTH": self.data_in_frac_width,
             "IN_PARALLELISM": self.in_rows,
             "IN_SIZE": self.in_columns,
+            "MAX_LARGE_NUMBERS": self.max_large_numbers,
             "LARGE_NUMBER_THRES": self.large_number_thres
         }
 
     def sw_compute(self):
         # for small_large_out only
-        final = []
         ref = []
         for i in range(len(self.data_in.data)):
-            current_vector = [0]*len(self.data_in.data[0])
-            for j in range(len(current_vector)):
+            current_vector_small = [0]*len(self.data_in.data[0])
+            count = 0
+            for j in range(len(current_vector_small)-1, -1, -1):  # counting from N down to 0
                 entry = self.data_in.data[i][j]
                 entry_int = entry >> self.data_in_frac_width
-                if self.sw_large_number_checker(entry_int, thres=127):
+                if self.sw_large_number_checker(entry_int, thres=127) and count < self.max_large_numbers:
                     # entries with large numbers are masked
-                    current_vector[j] = 0
+                    current_vector_small[j] = 0
+                    count += 1
                 else:
-                    current_vector[j] = entry
-            ref.append(current_vector)
+                    current_vector_small[j] = entry
+            ref.append(current_vector_small)
         ref.reverse()
         return ref
-
+    
     def sw_large_number_checker(self, data, thres):
         # MSB checker for fixed-point 16
         # data is a signed integer
         assert (thres > 0), "Large number threshold must be positive!"
         return abs(data) > thres
-        if (data > 0):
-            return (data >= (2**pos))
-        else:
-            return (abs(data) >= (2**pos + 1))
+        # if (data > 0):
+        #     return (data >= (2**pos))
+        # else:
+        #     return (abs(data) >= (2**pos + 1))
         
-    def sw_cast(self, inputs, in_width, in_frac_width, out_width, out_frac_width):
-        outputs = []
-        for j in range(len(inputs)):
-            in_list = inputs[j]
-            out_list = []
-            for i in range(0, len(in_list)):
-                in_value = in_list[i]
-                out_value = fixed_cast(in_value, in_width, in_frac_width, out_width, out_frac_width)
-                out_list.append(out_value)
-            outputs.append(out_list)
-        return outputs
-
-
 def debug_state(dut, state):
     logger.debug(
         "{} State: (in_ready,in_valid,out_ready,out_valid) = ({},{},{},{})".format(
@@ -122,11 +112,6 @@ def debug_state(dut, state):
         )
     )
 
-def unsignedTosigned(x):
-    if x < 2**15:
-        return x
-    else:
-        return x - 2**16
 @cocotb.test()
 async def test_scatter(dut):
     """Test integer based vector mult"""
