@@ -72,32 +72,10 @@ module llm_int8_quant #(
     assign weight_out_valid = weight_valid;
     assign weight_ready = weight_out_ready;
 
-    // logic  [IN_WIDTH-1:0] weight_large      [WEIGHT_PARALLELISM * WEIGHT_SIZE-1: 0];
-    // logic  [IN_WIDTH-1:0] weight_small      [WEIGHT_PARALLELISM * WEIGHT_SIZE-1: 0];
-    // scatter #(
-    //     .IN_WIDTH (WEIGHT_WIDTH),
-    //     .IN_SIZE (WEIGHT_PARALLELISM),
-    //     .IN_PARALLELISM (WEIGHT_SIZE)
-    // ) scatter_weight(
-    //     .clk(clk),
-    //     .rst(rst),
-    //     // input port for weight
-    //     .data_in(weight),
-    //     .data_in_valid(weight_in_valid),
-    //     .data_in_ready(weight_in_ready),
-        
-    //     .data_out_large(weight_large),
-    //     .data_out_small(weight_small),
-    //     .data_out_valid(weight_out_valid),
-    //     .data_out_ready(weight_out_ready)
-    // );
-
-
     // set dummy bias signals 
     logic [BIAS_WIDTH-1 :0] bias[BIAS_PARALLELISM * BIAS_SIZE - 1 : 0];
     logic bias_valid = 1'b1;
     logic bias_ready = 1'b1;
-
 
     logic [OUT_WIDTH-1:0] matmul_large [OUT_ROWS * OUT_COLUMNS - 1: 0];
     logic [OUT_WIDTH-1:0] matmul_small [OUT_ROWS * OUT_COLUMNS - 1: 0];
@@ -119,7 +97,7 @@ module llm_int8_quant #(
         .data_out_ready ({matmul_large_in_ready, matmul_small_in_ready})
     );
 
-    /* LARGE matrix */
+    /* LARGE (FP16 High Precision) matrix */
     fixed_matmul_core #(
         .IN1_WIDTH(IN_WIDTH),
         .IN1_FRAC_WIDTH(0),
@@ -134,7 +112,7 @@ module llm_int8_quant #(
         .IN2_PARALLELISM(WEIGHT_PARALLELISM),
         .IN_DEPTH(IN_DEPTH),
         .HAS_BIAS(HAS_BIAS)
-    ) inst_fmmc_large (
+    ) inst_fmm_large (
         .clk(clk),
         .rst(rst),
         .data_in1(data_in_large),
@@ -151,8 +129,8 @@ module llm_int8_quant #(
         .data_out_ready(matmul_large_out_ready)
     );
 
-    /* SMALL matrix */
-    fixed_matmul_core_quantized #(
+    /* SMALL (Int8 Low Precision) matrix */
+    quantized_matmul #(
         .IN1_WIDTH(IN_WIDTH),
         .IN1_FRAC_WIDTH(0),
         .IN2_WIDTH(WEIGHT_WIDTH),
@@ -167,7 +145,7 @@ module llm_int8_quant #(
         .IN_DEPTH(IN_DEPTH),
         .HAS_BIAS(HAS_BIAS),
         .QUANTIZATION_WIDTH(QUANTIZATION_WIDTH)
-    ) inst_fmmc_small (
+    ) inst_fmm_small (
         .clk(clk),
         .rst(rst),
         .data_in1(data_in_small),
@@ -197,9 +175,5 @@ module llm_int8_quant #(
         .data_out_valid (data_out_valid),
         .data_out_ready (data_out_ready)
     );
-    // assign data_in_ready = !rst;
-    // assign data_out_valid = !rst && matmul_large_valid && matmul_small_valid;  // TODO: join
-    // assign matmul_large_ready = data_out_ready;
-    // assign matmul_small_ready = data_out_ready;
 
 endmodule

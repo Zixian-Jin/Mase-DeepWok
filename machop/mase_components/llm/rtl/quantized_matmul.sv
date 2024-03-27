@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module fixed_matmul_core_quantized #(
+module quantized_matmul #(
     // input data_in1 = data_in; data_in2 = weight.
     parameter IN1_WIDTH = 8,
     parameter IN1_FRAC_WIDTH = 4,
