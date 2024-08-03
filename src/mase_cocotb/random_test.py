@@ -180,7 +180,7 @@ class SparseRandomSource(RandomSource):
         fix_seed=False,
         
         # sparsity related configs
-        compression="COO",  # data compression format
+        compression=None,  # data compression format
         block_num=3,  # no. blocks per processing unit
         sparse_block_num=2,
         block_size=4  # no. elements per block

@@ -6,7 +6,7 @@ import sys
 sys.path.append('/home/zixian/mase-tools/machop')
 # sys.path.append('../../../')
 ###############################################
-from mase_cocotb.random_test import RandomSource, RandomSink, check_results
+from mase_cocotb.random_test import *
 from mase_cocotb.runner import mase_runner
 
 import cocotb
@@ -43,14 +43,13 @@ class VerificationCase:
         self.sparse_block_num = 0
         self.block_size = int(self.x_columns/self.block_num)
         
-        self.x = RandomSource(
+        self.x = SparseRandomSource(
             name="x",
             samples=samples * self.iterations,
             num=self.x_rows * self.x_columns,
             max_stalls=0,
             debug=debug,
             # sparsity-related configs
-            sparse=True,
             block_num =self.block_num,
             sparse_block_num=self.sparse_block_num,
             block_size=self.block_size
@@ -62,7 +61,6 @@ class VerificationCase:
             max_stalls=0,
             debug=debug,
             # sparsit-related configs
-            sparse=False
         )
         # self.bias = RandomSource(
         #     name="bias",

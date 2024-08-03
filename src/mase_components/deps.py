@@ -225,4 +225,8 @@ MASE_HW_DEPS = {
         "common",
         "fixed_arithmetic",
     ],
+    # Sparse arithmetic
+    "sparse_arithmetic/sparse_simple_matmul": ["cast", "common", "fixed_arithmetic", "sparse_arithmetic"],
+    "compressed_arithmetic/csr_simple_matmul": ["cast", "common", "fixed_arithmetic", "compressed_arithmetic"],
+
 }
