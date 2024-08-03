@@ -48,7 +48,7 @@ class VerificationCase:
         # Alghouth the compressed_simple_matmul module utilizes element-wise
         # instead of block-wise sparsity, we still keep the block-wise sparse generator syntax
         # as far as code consistency is concerned.  
-        self.x = SparseRandomSource(
+        self.x = CompressedRandomSource(
             name="x",
             samples=samples * self.iterations,
             num=self.x_rows * self.x_columns,
@@ -117,7 +117,7 @@ class VerificationCase:
         # convert X from COO compressed format to sparse format
         x_sparse = []
         for i in range(self.samples):
-            sparse_row = self.x.COO2Sparse(self.x.data[i], self.x.row[i], self.x.col[i], self.x_rows, self.x_columns)
+            sparse_row = COO2Sparse(self.x.data[i], self.x.row[i], self.x.col[i], self.x_rows, self.x_columns)
             x_sparse.append(sparse_row)
             
         printMat(x_sparse[0], self.x_rows, self.x_columns)
@@ -183,7 +183,7 @@ def debug_state(dut, state):
 
 
 @cocotb.test()
-async def test_sparse_simple_matmul(dut):
+async def test_coo_simple_matmul(dut):
     """Test integer based vector mult"""
     samples = 100
     test_case = VerificationCase(samples=samples)

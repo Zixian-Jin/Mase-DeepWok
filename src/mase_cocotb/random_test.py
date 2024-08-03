@@ -180,6 +180,47 @@ class SparseRandomSource(RandomSource):
         fix_seed=False,
         
         # sparsity related configs
+        block_num=3,  # no. blocks per processing unit
+        sparse_block_num=2,
+        block_size=4  # no. elements per block
+    ):
+        super().__init__(
+            samples,
+            num,
+            max_stalls,
+            is_data_vector,
+            name,
+            data_specify,
+            debug,
+            arithmetic,
+            fix_seed,
+        )
+        
+        # Overwrite self.data if sparse
+        self.rand_gen = lambda: random_gen_block_sparse(block_size, block_num, sparse_block_num, num)                
+        if is_data_vector:
+            self.data = [self.rand_gen() for _ in range(samples)]
+            self.dummy = self.rand_gen()
+        else:
+            # TODO
+            pass               
+
+class CompressedRandomSource(RandomSource):
+    def __init__(
+        self,
+        samples=10,
+        num=1,
+        dim0=1, # row
+        dim1=1, # col
+        max_stalls=100,
+        is_data_vector=True,
+        name="",
+        data_specify=[],
+        debug=False,
+        arithmetic=None,
+        fix_seed=False,
+        
+        # sparsity related configs
         compression=None,  # data compression format
         block_num=3,  # no. blocks per processing unit
         sparse_block_num=2,
@@ -226,7 +267,7 @@ class SparseRandomSource(RandomSource):
             self.row = []
             self.col = []
             for i in range(samples):
-                val, row_table, col_table = self.sparse2COO(self.data[i], dim0, dim1, align_size=(dim1-sparse_block_num)*dim0)
+                val, row_table, col_table = sparse2COO(self.data[i], dim0, dim1, align_size=(dim1-sparse_block_num)*dim0)
                 self.data[i] = val
                 self.row.append(row_table)
                 self.col.append(col_table)
@@ -262,7 +303,8 @@ class SparseRandomSource(RandomSource):
             data = self.dummy_pack
         else:
             for (k, v) in self.data_pack.items():
-                data[k] = v[-1]                
+                data[k] = v[-1]    
+        print('###DEBUG###', data)            
         if not to_feed:
             self.logger.debug(
                 "source {} cannot feed any token because of back pressure.".format(

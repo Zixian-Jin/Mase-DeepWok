@@ -17,7 +17,7 @@ Description : This module does a matrix multiplcation between matrices X & Y.
 
 `timescale 1ns / 1ps
 
-module compressed_simple_matmul #(
+module coo_simple_matmul #(
     // Dimensions
     parameter N                    = 2,
     parameter M                    = 2,
