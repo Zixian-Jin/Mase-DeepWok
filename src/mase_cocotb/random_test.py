@@ -164,6 +164,129 @@ class RandomSink:
         return len(self.data) == self.samples
 
 
+class SparseRandomSource(RandomSource):
+    def __init__(
+        self,
+        samples=10,
+        num=1,
+        dim0=1, # row
+        dim1=1, # col
+        max_stalls=100,
+        is_data_vector=True,
+        name="",
+        data_specify=[],
+        debug=False,
+        arithmetic=None,
+        fix_seed=False,
+        
+        # sparsity related configs
+        compression="COO",  # data compression format
+        block_num=3,  # no. blocks per processing unit
+        sparse_block_num=2,
+        block_size=4  # no. elements per block
+    ):
+        super().__init__(
+            samples,
+            num,
+            max_stalls,
+            is_data_vector,
+            name,
+            data_specify,
+            debug,
+            arithmetic,
+            fix_seed,
+        )
+        
+        # Overwrite self.data if sparse
+        self.rand_gen = lambda: random_gen_block_sparse(block_size, block_num, sparse_block_num, num)
+        
+        # For switching between different compression formats
+        # self.data_pack = {
+        #     "COO": {"val":[], "row":[], "col":[]},
+        #     "CSR": {"val":[], "col_index":[], "row_bound":[]},
+        #     "CSC": {"val":[], "row_index":[], "col_bound":[]}
+        # }
+        
+        # Implementation varies between different compression formats and will be overloaded.
+        self.data_pack = {"val":[], "index":[]}
+        self.dummy_pack = {"val":[], "index":[]}
+                
+        if is_data_vector:
+            val_sparse = [self.rand_gen() for _ in range(samples)]
+            dummy_sparse = [self.rand_gen() for _ in range(num)]
+        else:
+            # TODO
+            pass
+        
+        # Overwrite self.data and create self.row & self.col if compression
+        if compression == 'COO':
+            assert dim0*dim1 == num
+            # Overwrite self.dummy
+            self.dummy = [-1 for _ in range((dim1-sparse_block_num)*dim0)]
+            self.row = []
+            self.col = []
+            for i in range(samples):
+                val, row_table, col_table = self.sparse2COO(self.data[i], dim0, dim1, align_size=(dim1-sparse_block_num)*dim0)
+                self.data[i] = val
+                self.row.append(row_table)
+                self.col.append(col_table)
+        elif compression == 'CSR':
+            assert dim0*dim1 == num
+            # Overload self.data_pack
+            self.data_pack = {"val":[], "col_index":[], "row_bound":[]}
+            # Overload self.dummy_pack
+            self.dummy_pack['val'] = [0 for _ in range((dim1-sparse_block_num)*dim0)]
+            self.dummy_pack['col_index'] = [-1 for _ in range((dim1-sparse_block_num)*dim0)]
+            self.dummy_pack['row_bound'] = [0 for _ in range(dim0+1)]
+            
+            csr_val_dense = []
+            csr_col_index = []
+            csr_row_bound = []
+            for i in range(samples):
+                csr_val_dense, csr_col_index, csr_row_bound = sparse2CSR(val_sparse[i], dim0, dim1, align_size=(dim1-sparse_block_num)*dim0)
+                self.data_pack["val"].append(csr_val_dense)
+                self.data_pack["col_index"].append(csr_col_index)
+                self.data_pack["row_bound"].append(csr_row_bound)
+                
+
+        elif compression == 'CSC':
+            pass
+        else:
+            pass
+        
+    def compute(self, next_ready):
+        """The compute simulates the synchronous computation for data"""
+        to_feed = (not self.is_empty()) and next_ready
+        data = {}   # implementation varies between different compression formats
+        if self.is_empty():
+            data = self.dummy_pack
+        else:
+            for (k, v) in self.data_pack.items():
+                data[k] = v[-1]                
+        if not to_feed:
+            self.logger.debug(
+                "source {} cannot feed any token because of back pressure.".format(
+                    self.name
+                )
+            )
+            return (not self.is_empty()), data
+        if (not self.random_buff) or self.stall_count > self.max_stalls:
+            data
+            for (k, v) in self.data_pack.items():
+                v.pop()  
+            self.logger.debug(
+                "source {} feeds a token. Current depth = {}/{}".format(
+                    self.name, len(self.data), self.samples
+                )
+            )
+            return 1, data
+        return 0, data
+
+    def is_empty(self):
+        return len(self.data_pack['val']) == 0
+
+
+
 def check_results(hw_out, sw_out, thres=1):
     assert len(hw_out) == len(
         sw_out

@@ -174,3 +174,152 @@ def fixed_cast(val, in_width, in_frac_width, out_width, out_frac_width):
             val = val
             # val = int(val % (1 << out_width))
     return val  # << out_frac_width  # treat data<out_width, out_frac_width> as data<out_width, 0>
+
+
+
+def random_gen_sparse(sparsity=0.8):
+    if random.random() < sparsity:
+        return 0
+    else:
+        return 1
+    
+def random_gen_block_sparse(block_size, block_num, sparse_block_num, num) -> list:
+    # naming conventions:
+    # the vector to return contains num elements
+    # these elements are grouped as several processing units
+    # each unit consists of `block_num` blocks, with each block containing `block_size` elements
+    result = []
+    
+    unit_num = num/(block_num*block_size)
+    assert int(unit_num) == unit_num
+    unit_num = int(unit_num)
+    
+    for i in range(unit_num):  # for each processing unit
+        sparse_block_ids = random.sample(list(range(block_num)), sparse_block_num)
+        # sparse_block_ids = [0, 1]
+        for block_id in range(block_num):
+            if block_id in sparse_block_ids:
+                result += [0]*block_size  # add an all-zero block
+            else:
+                result += [random.randint(0, 30) for k in range(block_size)]  # add an non-zero block
+                
+    return result
+
+
+def printMat(tensor, dim0, dim1):
+    # dim0 for row size, dim1 for col size
+    assert len(tensor) == dim0*dim1, "Incorrect tensor dimension"
+    
+    print(' ', end='\t')
+    for j in range(dim1):
+        print('(%s)'%str(j), end='\t')
+    
+    print()
+    
+    for i in range(dim0):
+        print('(%s)'%str(i), end='\t')
+        for j in range(dim1):
+            e = tensor[i*dim1 + j]
+            print(e, end='\t')
+        print()
+    
+def sparse2COO(sparse_tensor_flattened, dim0, dim1, align_size=None):
+    ''' Convert sparse matrix to COO format.
+        align_size: all dense rows must be padded with zero to have their size aligned.
+    '''
+    val = []
+    row_table = []
+    col_table = []
+    
+    assert len(sparse_tensor_flattened) == dim0*dim1, "Unmatched sparse tensor dimension"
+    
+    for i in range(dim0):
+        for j in range(dim1):
+            ind = i*dim1 + j
+            e = sparse_tensor_flattened[ind]
+            if (e != 0):
+                val.append(e)
+                row_table.append(i)
+                col_table.append(j)
+    
+    if align_size != None and len(val) < align_size:
+        pad = align_size - len(val)
+        val += [-1]*pad
+        row_table += [-1]*pad
+        col_table += [-1]*pad
+    return val, row_table, col_table
+
+def COO2Sparse(coo_val, coo_row, coo_col, dim0, dim1):
+    assert len(coo_val) == len(coo_row), "Unmatched COO tuple."
+    assert len(coo_row) == len(coo_col), "Unmathced COO tuple."
+    
+    sparse_tensor_flattened = [0 for i in range(dim0*dim1)]
+    for i in range(len(coo_val)):
+        val = coo_val[i]
+        row = coo_row[i]
+        col = coo_col[i]
+        if (row == -1 or col == -1):
+            continue
+        ind = row*dim1 + col
+        sparse_tensor_flattened[ind] = val
+                    
+    return sparse_tensor_flattened
+
+
+def sparse2CSR(sparse_tensor_flattened, dim0, dim1, align_size=None):
+    ''' Convert sparse matrix to COO format.
+        align_size: all dense rows must be padded with zero to have their size aligned.
+    '''
+    val = []
+    col_index = []
+    row_bound = []
+    
+    assert len(sparse_tensor_flattened) == dim0*dim1, "Unmatched sparse tensor dimension"
+    
+    count = 0 
+    row_bound.append(count)           
+    for i in range(dim0):
+        for j in range(dim1):
+            ind = i*dim1 + j
+            e = sparse_tensor_flattened[ind]
+            if (e != 0):
+                val.append(e)
+                col_index.append(j)
+                count += 1
+        row_bound.append(count)
+    
+    if align_size != None:
+        if (len(val) < align_size):
+            pad = align_size - len(val)
+            val += [0]*pad
+            col_index += [-1]*pad
+        elif (len(val) > align_size):
+            print('WARNING: actual number of non-zero elements larger than align_size')
+    if (len(row_bound) == 4):
+        print('#######Catch it!')
+        print(sparse_tensor_flattened)
+        print(val)
+        print(col_index)
+        print(row_bound)
+    return val, col_index, row_bound
+
+def CSR2Sparse(csr_val, csr_index, csr_bound, dim0, dim1):
+    assert len(csr_val) == len(csr_index), "Unmatched CSR tuple."
+    assert len(csr_bound) == dim0 + 1, "Unmathced CSR tuple."
+    
+    sparse_tensor_flattened = [0 for i in range(dim0*dim1)]
+    count = 0
+    row = 0
+    
+    for row in range(len(csr_bound)-1):
+        while (count < csr_bound[row+1]):  # step to the next non-empty row
+            val = csr_val[count]
+            col = csr_index[count]
+            if (row == -1 or col == -1):
+                continue
+            else:
+                sparse_tensor_flattened[row*dim1 + col] = val
+                count += 1
+            
+    return sparse_tensor_flattened
+
