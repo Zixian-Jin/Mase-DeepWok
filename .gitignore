@@ -165,5 +165,7 @@ prof/
 *.csv
 
 # Zixian-Customised Settings: Allow Wavefiles Tracking
+!**/build/**/*.vcd
+!**/obj_dir/**/*.vcd
 !*.vcd 
 !*.fst
