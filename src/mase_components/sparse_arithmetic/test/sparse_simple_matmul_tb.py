@@ -240,4 +240,5 @@ if __name__ == "__main__":
     mase_runner(
         module_param_list=[tb.get_dut_parameters()],
         extra_build_args=["--unroll-count", "3000"],
+        trace=True
     )
