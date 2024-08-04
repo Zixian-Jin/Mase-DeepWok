@@ -38,8 +38,8 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
-sim_build/
+# build/*
+# sim_build/*
 develop-eggs/
 dist/
 downloads/
@@ -79,8 +79,9 @@ coverage.xml
 .pytest_cache/
 
 # Hardware tests
-build/*
-obj_dir/*
+build/**
+obj_dir/**
+!build/**/*.vcd
 
 # Translations
 *.mo
@@ -165,5 +166,5 @@ prof/
 *.csv
 
 # Zixian-Customised Settings: Allow Wavefiles Tracking
-!*.vcd 
-!*.fst
+#!*.vcd 
+#!*.fst
