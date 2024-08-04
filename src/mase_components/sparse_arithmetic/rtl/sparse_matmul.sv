@@ -21,7 +21,7 @@ Description : This module does a matrix multiplcation between matrices X & Y.
 
 // TODO: REMOVE THIS AFTER DONE
 /* verilator lint_off UNUSEDPARAM */
-module matmul #(
+module sparse_matmul #(
     // Total dimensions
     parameter A_TOTAL_DIM0          = 4,
     parameter A_TOTAL_DIM1          = 4,
@@ -46,6 +46,10 @@ module matmul #(
 
     // Output casting/rounding
     parameter OUT_SYMMETRIC        = 0,
+
+    // Sparsity
+    parameter BLOCK_NUM            = 2,
+    parameter SPARSE_BLOCK_NUM     = 1,
 
     // Derived Dimensions (Constants)
     localparam C_TOTAL_DIM0        = B_TOTAL_DIM0,
@@ -232,7 +236,10 @@ simple_matmul #(
     .Y_FRAC_WIDTH     (B_FRAC_WIDTH),
     .OUTPUT_ROUNDING  (0),
     .OUT_WIDTH        (SM_OUT_WIDTH),
-    .OUT_FRAC_WIDTH   (SM_OUT_FRAC_WIDTH)
+    .OUT_FRAC_WIDTH   (SM_OUT_FRAC_WIDTH),
+    // Sparsity related params
+    .BLOCK_NUM        (BLOCK_NUM),
+    .SPARSE_BLOCK_NUM (SPARSE_BLOCK_NUM)
 ) simple_matmul_inst (
     .clk              (clk),
     .rst              (rst),
