@@ -30,7 +30,7 @@ class VerificationCase:
         self.y_frac_width = 0
         # self.bias_width = 16
         # self.bias_frac_width = 0
-        self.data_out_width = 16
+        self.data_out_width = 8 + 8 + int(math.log2(1*2))  # $clog2(NONSPARSE_BLOCK_NUM * BLOCK_SIZE)
         self.data_out_frac_width = 0
         # self.has_bias = 1
 
@@ -85,14 +85,14 @@ class VerificationCase:
 
     def get_dut_parameters(self):
         DEFAULT_CONFIG = {
-            "A_TOTAL_DIM0": self.x_columns,  # M
-            "A_TOTAL_DIM1": self.x_rows,   # N
-            "B_TOTAL_DIM0": self.y_columns, # K
-            "B_TOTAL_DIM1": self.y_rows, # M=M; Must equalt to A_TOTAL_DIM0
-            "A_COMPUTE_DIM0": self.iterations,
-            "A_COMPUTE_DIM1": self.x_rows,   # TODO: A_DEPTH_DIM1 != 1
-            "B_COMPUTE_DIM0": self.iterations,   # TODO: B_DEPTH_DIM_0 != 1
-            "B_COMPUTE_DIM1": self.y_rows,  # Must equal A_COMPUTE_DIM0
+            "A_TOTAL_DIM0": self.x_columns * self.iterations,  # M
+            "A_TOTAL_DIM1": self.x_rows,  # TODO: A_DEPTH_DIM1 != 1 
+            "B_TOTAL_DIM0": self.y_columns, # TODO: B_DEPTH_DIM_0 != 1
+            "B_TOTAL_DIM1": self.y_rows * self.iterations, 
+            "A_COMPUTE_DIM0": self.x_columns,
+            "A_COMPUTE_DIM1": self.x_rows,  # N
+            "B_COMPUTE_DIM0": self.y_columns,  # K
+            "B_COMPUTE_DIM1": self.y_rows,  # M=M; Must equalt to A_COMPUTE_DIM0
             "A_WIDTH": self.x_width,
             "A_FRAC_WIDTH": self.x_frac_width,
             "B_WIDTH": self.y_width,
@@ -103,6 +103,8 @@ class VerificationCase:
             "BLOCK_NUM": self.block_num,
             "SPARSE_BLOCK_NUM": self.sparse_block_num
         }
+        
+        return DEFAULT_CONFIG
 
 
     def sw_compute(self):
@@ -158,10 +160,10 @@ def debug_state(dut, state):
     logger.debug(
         "{} State: (w_ready,w_valid,in_ready,in_valid,out_ready,out_valid) = ({},{},{},{},{},{})".format(
             state,
-            dut.x_ready.value,
-            dut.x_valid.value,
-            dut.y_ready.value,
-            dut.y_valid.value,
+            dut.a_ready.value,
+            dut.a_valid.value,
+            dut.b_ready.value,
+            dut.b_valid.value,
             dut.out_ready.value,
             dut.out_valid.value,
         )
@@ -187,8 +189,8 @@ async def test_sparse_matmul(dut):
     await Timer(500, units="ns")
 
     # Synchronize with the clock
-    dut.y_valid.value = 0
-    dut.x_valid.value = 0
+    dut.b_valid.value = 0
+    dut.a_valid.value = 0
     dut.out_ready.value = 1
     debug_state(dut, "Pre-clk")
     await FallingEdge(dut.clk)
@@ -203,8 +205,8 @@ async def test_sparse_matmul(dut):
         await FallingEdge(dut.clk)
         debug_state(dut, "Post-clk")
         # dut.bias_valid.value = test_case.bias.pre_compute()
-        dut.y_valid.value = test_case.y.pre_compute()
-        dut.x_valid.value = test_case.x.pre_compute()
+        dut.b_valid.value = test_case.y.pre_compute()
+        dut.a_valid.value = test_case.x.pre_compute()
         await Timer(1, units="ns")
         dut.out_ready.value = test_case.outputs.pre_compute(
             dut.out_valid.value
@@ -215,11 +217,11 @@ async def test_sparse_matmul(dut):
         # dut.bias_valid.value, dut.bias.value = test_case.bias.compute(
         #     dut.bias_ready.value
         # )
-        dut.y_valid.value, dut.y_data.value = test_case.y.compute(
-            dut.y_ready.value
+        dut.b_valid.value, dut.b_data.value = test_case.y.compute(
+            dut.b_ready.value
         )
-        dut.x_valid.value, dut.x_data.value = test_case.x.compute(
-            dut.x_ready.value
+        dut.a_valid.value, dut.a_data.value = test_case.x.compute(
+            dut.a_ready.value
         )
         await Timer(1, units="ns")
         dut.out_ready.value = test_case.outputs.compute(
