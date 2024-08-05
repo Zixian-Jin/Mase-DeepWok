@@ -148,10 +148,10 @@ class BertSelfAttentionInteger(_BertSelfAttentionBase):
         self.matmul = partial(
             matmul_integer,
             config={
-                "data_in_width": self.q_config["data_out_width"],
-                "data_in_frac_width": self.q_config["data_out_frac_width"],
-                "weight_width": self.q_config["data_out_width"],
-                "weight_frac_width": self.q_config["data_out_frac_width"],
+                "data_in_width": self.out_q_config["data_out_width"],
+                "data_in_frac_width": self.out_q_config["data_out_frac_width"],
+                "weight_width": self.out_q_config["data_out_width"],
+                "weight_frac_width": self.out_q_config["data_out_frac_width"],
             },
             out_config=out_q_config,
             floor=floor,
