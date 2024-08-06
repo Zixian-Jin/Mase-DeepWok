@@ -136,9 +136,7 @@ def gen_block_sparse_random_matrix_input(
     x = (torch.rand(size=(total_dim1, total_dim0)) - 0.5) * 2
     x *= 2 ** (width - frac_width - 1)
     x = quantize_to_int(x, width, frac_width)
-    dense_matrices = split_matrix(x, total_dim0, total_dim1, compute_dim0, compute_dim1)
-    sparse_matrices = [block_sparsify_matrix(mat) for mat in dense_matrices]
-    return sparse_matrices
+    return split_matrix(x, total_dim0, total_dim1, compute_dim0, compute_dim1, block_num, sparse_block_num)
 
 def block_sparsify_matrix(x: Tensor, block_num, sparse_block_num):
     '''
@@ -165,4 +163,20 @@ def block_sparsify_matrix(x: Tensor, block_num, sparse_block_num):
                 x[i][bid*block_size : (bid+1)*block_size] = 0
     
     return x
-            
+
+def split_block_sparse_matrix(x: Tensor, total_dim0, total_dim1, compute_dim0, compute_dim1, block_num, sparse_block_num):
+    depth_dim0 = total_dim0 // compute_dim0
+    depth_dim1 = total_dim1 // compute_dim1
+
+    l = list()
+    for i in range(depth_dim1):
+        for j in range(depth_dim0):
+            block = x[
+                i * compute_dim1 : (i + 1) * compute_dim1,
+                j * compute_dim0 : (j + 1) * compute_dim0,
+            ]
+            block = block_sparsify_matrix(block, block_num, sparse_block_num)
+            block_flatten = block.flatten().tolist()
+            block_flatten.reverse()
+            l.append(block_flatten)
+    return l
