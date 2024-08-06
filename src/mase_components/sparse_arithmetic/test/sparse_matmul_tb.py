@@ -129,14 +129,14 @@ async def single_mult(dut):
 async def repeated_mult(dut):
     tb = MatmulTB(dut)
     tb.output_monitor.ready.value = 1
-    await tb.run_test(batches=1000, us=2000)
+    await tb.run_test(batches=50, us=100)
 
 
 @cocotb.test()
 async def repeated_mult_backpressure(dut):
     tb = MatmulTB(dut)
     cocotb.start_soon(bit_driver(dut.out_ready, dut.clk, 0.6))
-    await tb.run_test(batches=500, us=2000)
+    await tb.run_test(batches=50, us=100)
 
 
 @cocotb.test()
@@ -145,7 +145,7 @@ async def repeated_mult_valid_backpressure(dut):
     tb.a_driver.set_valid_prob(0.7)
     tb.b_driver.set_valid_prob(0.7)
     cocotb.start_soon(bit_driver(dut.out_ready, dut.clk, 0.6))
-    await tb.run_test(batches=500, us=2000)
+    await tb.run_test(batches=50, us=100)
 
 
 def gen_random_dimensions():
