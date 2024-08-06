@@ -136,7 +136,7 @@ def gen_block_sparse_random_matrix_input(
     x = (torch.rand(size=(total_dim1, total_dim0)) - 0.5) * 2
     x *= 2 ** (width - frac_width - 1)
     x = quantize_to_int(x, width, frac_width)
-    return split_matrix(x, total_dim0, total_dim1, compute_dim0, compute_dim1, block_num, sparse_block_num)
+    return split_block_sparse_matrix(x, total_dim0, total_dim1, compute_dim0, compute_dim1, block_num, sparse_block_num)
 
 def block_sparsify_matrix(x: Tensor, block_num, sparse_block_num):
     '''
