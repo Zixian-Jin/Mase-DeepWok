@@ -1,251 +1,255 @@
 #!/usr/bin/env python3
 
-# This script tests the fixed point linear
-import os, math, logging
-import sys
-sys.path.append('/home/zixian/mase-tools/machop')
-# sys.path.append('../../../')
-###############################################
-from mase_cocotb.random_test import *
-from mase_cocotb.runner import mase_runner
+import logging
+from random import randint
 
 import cocotb
-from cocotb.triggers import Timer
-from cocotb.triggers import FallingEdge
-from cocotb.clock import Clock
+from cocotb.triggers import *
 
-debug = True
-
-logger = logging.getLogger("tb_signals")
-if debug:
-    logger.setLevel(logging.DEBUG)
+from mase_cocotb.testbench import Testbench
+from mase_cocotb.interfaces.streaming import StreamDriver, StreamMonitor
+from mase_cocotb.runner import mase_runner
+from mase_cocotb.matrix_tools import gen_random_matrix_input, matrix_mult_model, gen_block_sparse_random_matrix_input
+from mase_cocotb.utils import bit_driver
 
 
-# DUT test specifications
-class VerificationCase:
-    def __init__(self, samples=10):
-        self.x_width = 8
-        self.x_frac_width = 0
-        self.y_width = 8
-        self.y_frac_width = 0
-        # self.bias_width = 16
-        # self.bias_frac_width = 0
-        self.data_out_width = 8 + 8 + int(math.log2(1*2))  # $clog2(NONSPARSE_BLOCK_NUM * BLOCK_SIZE)
-        self.data_out_frac_width = 0
-        # self.has_bias = 1
+logger = logging.getLogger("testbench")
+logger.setLevel(logging.INFO)
 
-        self.x_rows = 2
-        self.x_columns = 8
-        self.y_rows = self.x_columns
-        self.y_columns = 2
-        self.iterations = 5  # not used for simple_matmul
-        self.block_num = 4
-        self.sparse_block_num = 3
-        self.block_size = int(self.x_columns/self.block_num)
-        
-        self.x = SparseRandomSource(
-            name="x",
-            samples=samples * self.iterations,
-            num=self.x_rows * self.x_columns,
-            max_stalls=0,
-            debug=debug,
-            # sparsity-related configs
-            block_num =self.block_num,
-            sparse_block_num=self.sparse_block_num,
-            block_size=self.block_size
-        )
-        self.y = RandomSource(
-            name="y",
-            samples=samples * self.iterations,
-            num=self.y_rows * self.y_columns,
-            max_stalls=0,
-            debug=debug,
-            # sparsit-related configs
-        )
-        # self.bias = RandomSource(
-        #     name="bias",
-        #     samples=samples,
-        #     num=self.in_rows * self.y_columns,
-        #     max_stalls=0,
-        #     debug=debug,
-        # )
-        self.outputs = RandomSink(samples=samples, max_stalls=0, debug=debug)
-        self.samples = samples
-        self.ref = self.sw_compute()
-        self.ref = self.sw_cast(
-            inputs=self.ref,
-            in_width=self.x_width
-            + self.y_width
-            + math.ceil(math.log2(self.iterations * self.x_columns)),
-            # + self.has_bias,
-            in_frac_width=self.x_frac_width + self.y_frac_width,
-            out_width=self.data_out_width,
-            out_frac_width=self.data_out_frac_width,
+
+class MatmulTB(Testbench):
+    def __init__(self, dut) -> None:
+        super().__init__(dut, dut.clk, dut.rst)
+        self.assign_self_params(
+            [
+                "A_TOTAL_DIM0",
+                "A_TOTAL_DIM1",
+                "B_TOTAL_DIM0",
+                "B_TOTAL_DIM1",
+                "C_TOTAL_DIM0",
+                "C_TOTAL_DIM1",
+                "A_COMPUTE_DIM0",
+                "A_COMPUTE_DIM1",
+                "B_COMPUTE_DIM0",
+                "B_COMPUTE_DIM1",
+                "C_COMPUTE_DIM0",
+                "C_COMPUTE_DIM1",
+                "A_WIDTH",
+                "A_FRAC_WIDTH",
+                "B_WIDTH",
+                "B_FRAC_WIDTH",
+                "OUT_WIDTH",
+                "OUT_FRAC_WIDTH",
+                "OUT_SYMMETRIC",
+                "BLOCK_NUM",
+                "SPARSE_BLOCK_NUM"
+            ]
         )
 
-    def get_dut_parameters(self):
-        DEFAULT_CONFIG = {
-            "A_TOTAL_DIM0": self.x_columns * self.iterations,  # M
-            "A_TOTAL_DIM1": self.x_rows,  # TODO: A_DEPTH_DIM1 != 1 
-            "B_TOTAL_DIM0": self.y_columns, # TODO: B_DEPTH_DIM_0 != 1
-            "B_TOTAL_DIM1": self.y_rows * self.iterations, 
-            "A_COMPUTE_DIM0": self.x_columns,
-            "A_COMPUTE_DIM1": self.x_rows,  # N
-            "B_COMPUTE_DIM0": self.y_columns,  # K
-            "B_COMPUTE_DIM1": self.y_rows,  # M=M; Must equalt to A_COMPUTE_DIM0
-            "A_WIDTH": self.x_width,
-            "A_FRAC_WIDTH": self.x_frac_width,
-            "B_WIDTH": self.y_width,
-            "B_FRAC_WIDTH": self.y_frac_width,
-            "OUT_WIDTH": self.data_out_width,
-            "OUT_FRAC_WIDTH": self.data_out_frac_width,
-            # Sparsity
-            "BLOCK_NUM": self.block_num,
-            "SPARSE_BLOCK_NUM": self.sparse_block_num
-        }
-        
-        return DEFAULT_CONFIG
-
-
-    def sw_compute(self):
-        final = []
-        ref = []
-        for i in range(self.samples):
-            acc = [0 for _ in range(self.x_rows * self.y_columns)]
-            for w in range(self.x_rows):
-                for j in range(self.iterations):
-                    id = i * self.iterations + j
-                    current_row = [self.x.data[id][w*self.x_columns + i] for i in range(self.x_columns)]
-                    for k in range(self.y_columns):
-                        current_col = [self.y.data[id][j*self.y_columns + k] for j in range(self.y_rows)]
-                        s = [current_row[h]*current_col[h] for h in range(self.x_columns)]
-                        acc[w * self.y_columns + k] += sum(s)
-            # if self.has_bias:
-            #     for j in range(self.x_rows * self.y_columns):
-            #         acc[j] += self.bias.data[i][j] << (
-            #             self.y_frac_width
-            #             + self.x_frac_width
-            #             - self.bias_frac_width
-            #         )
-            ref.append(acc)
-        ref.reverse()
-        return ref
-
-    def sw_cast(self, inputs, in_width, in_frac_width, out_width, out_frac_width):
-        outputs = []
-        for j in range(len(inputs)):
-            in_list = inputs[j]
-            out_list = []
-            for i in range(0, len(in_list)):
-                in_value = in_list[i]
-                if in_frac_width > out_frac_width:
-                    in_value = in_value >> (in_frac_width - out_frac_width)
-                else:
-                    in_value = in_value << (out_frac_width - in_frac_width)
-                in_int_width = in_width - in_frac_width
-                out_int_width = out_width - out_frac_width
-                if in_int_width > out_int_width:
-                    if in_value >> (in_frac_width + out_int_width) > 0:
-                        in_value = 1 << out_width - 1
-                    elif in_value >> (in_frac_width + out_int_width) < 0:
-                        in_value = -(1 << out_width - 1)
-                    else:
-                        in_value = int(in_value % (1 << out_width))
-                out_list.append(in_value)
-            outputs.append(out_list)
-        return outputs
-
-
-def debug_state(dut, state):
-    logger.debug(
-        "{} State: (w_ready,w_valid,in_ready,in_valid,out_ready,out_valid) = ({},{},{},{},{},{})".format(
-            state,
-            dut.a_ready.value,
-            dut.a_valid.value,
-            dut.b_ready.value,
-            dut.b_valid.value,
-            dut.out_ready.value,
-            dut.out_valid.value,
+        # Drivers & Monitors
+        self.a_driver = StreamDriver(dut.clk, dut.a_data, dut.a_valid, dut.a_ready)
+        self.b_driver = StreamDriver(dut.clk, dut.b_data, dut.b_valid, dut.b_ready)
+        self.output_monitor = StreamMonitor(
+            dut.clk,
+            dut.out_data,
+            dut.out_valid,
+            dut.out_ready,
+            check=True,
+            unsigned=True,
         )
-    )
+
+    def generate_inputs(self):
+        A_inputs = gen_block_sparse_random_matrix_input(
+            self.A_TOTAL_DIM0,
+            self.A_TOTAL_DIM1,
+            self.A_COMPUTE_DIM0,
+            self.A_COMPUTE_DIM1,
+            self.A_WIDTH,
+            self.A_FRAC_WIDTH,
+            
+            self.BLOCK_NUM,
+            self.SPARSE_BLOCK_NUM
+        )
+        B_inputs = gen_random_matrix_input(
+            self.B_TOTAL_DIM0,
+            self.B_TOTAL_DIM1,
+            self.B_COMPUTE_DIM0,
+            self.B_COMPUTE_DIM1,
+            self.B_WIDTH,
+            self.B_FRAC_WIDTH,
+        )
+        return A_inputs, B_inputs
+
+    def model(self, A_inputs, B_inputs):
+        return matrix_mult_model(
+            self.A_TOTAL_DIM0,
+            self.A_TOTAL_DIM1,
+            self.A_COMPUTE_DIM0,
+            self.A_COMPUTE_DIM1,
+            self.B_TOTAL_DIM0,
+            self.B_TOTAL_DIM1,
+            self.B_COMPUTE_DIM0,
+            self.B_COMPUTE_DIM1,
+            self.C_TOTAL_DIM0,
+            self.C_TOTAL_DIM1,
+            self.C_COMPUTE_DIM0,
+            self.C_COMPUTE_DIM1,
+            self.A_WIDTH,
+            self.A_FRAC_WIDTH,
+            self.B_WIDTH,
+            self.B_FRAC_WIDTH,
+            self.OUT_WIDTH,
+            self.OUT_FRAC_WIDTH,
+            self.OUT_SYMMETRIC,
+            A_inputs,
+            B_inputs,
+        )
+
+    async def run_test(self, batches, us):
+        await self.reset()
+        for _ in range(batches):
+            A_inputs, B_inputs = self.generate_inputs()
+            exp_out = self.model(A_inputs, B_inputs)
+            # Setup drivers and monitors
+            self.a_driver.load_driver(A_inputs)
+            self.b_driver.load_driver(B_inputs)
+            self.output_monitor.load_monitor(exp_out)
+        await Timer(us, units="us")
+        assert self.output_monitor.exp_queue.empty()
 
 
 @cocotb.test()
-async def test_sparse_matmul(dut):
-    """Test integer based vector mult"""
-    samples = 100
-    test_case = VerificationCase(samples=samples)
+async def single_mult(dut):
+    tb = MatmulTB(dut)
+    tb.output_monitor.ready.value = 1
+    await tb.run_test(batches=1, us=100)
 
-    # Reset cycle
-    await Timer(20, units="ns")
-    dut.rst.value = 1
-    await Timer(100, units="ns")
-    dut.rst.value = 0
 
-    # Create a 10ns-period clock on port clk
-    clock = Clock(dut.clk, 10, units="ns")
-    # Start the clock
-    cocotb.start_soon(clock.start())
-    await Timer(500, units="ns")
+@cocotb.test()
+async def repeated_mult(dut):
+    tb = MatmulTB(dut)
+    tb.output_monitor.ready.value = 1
+    await tb.run_test(batches=1000, us=2000)
 
-    # Synchronize with the clock
-    dut.b_valid.value = 0
-    dut.a_valid.value = 0
-    dut.out_ready.value = 1
-    debug_state(dut, "Pre-clk")
-    await FallingEdge(dut.clk)
-    debug_state(dut, "Post-clk")
-    debug_state(dut, "Pre-clk")
-    await FallingEdge(dut.clk)
-    debug_state(dut, "Post-clk")
 
-    done = False
-    # Set a timeout to avoid deadlock
-    for i in range(samples * 50):
-        await FallingEdge(dut.clk)
-        debug_state(dut, "Post-clk")
-        # dut.bias_valid.value = test_case.bias.pre_compute()
-        dut.b_valid.value = test_case.y.pre_compute()
-        dut.a_valid.value = test_case.x.pre_compute()
-        await Timer(1, units="ns")
-        dut.out_ready.value = test_case.outputs.pre_compute(
-            dut.out_valid.value
+@cocotb.test()
+async def repeated_mult_backpressure(dut):
+    tb = MatmulTB(dut)
+    cocotb.start_soon(bit_driver(dut.out_ready, dut.clk, 0.6))
+    await tb.run_test(batches=500, us=2000)
+
+
+@cocotb.test()
+async def repeated_mult_valid_backpressure(dut):
+    tb = MatmulTB(dut)
+    tb.a_driver.set_valid_prob(0.7)
+    tb.b_driver.set_valid_prob(0.7)
+    cocotb.start_soon(bit_driver(dut.out_ready, dut.clk, 0.6))
+    await tb.run_test(batches=500, us=2000)
+
+
+def gen_random_dimensions():
+    compute_dim0 = randint(2, 3)
+    compute_dim1 = randint(2, 3)
+    total_dim0 = compute_dim0 * randint(1, 3)
+    total_dim1 = compute_dim1 * randint(1, 3)
+    return compute_dim0, compute_dim1, total_dim0, total_dim1
+
+
+def random_matrix_mult_dim_cfg():
+    a_cfg = gen_random_dimensions()
+    a_compute_dim0, a_compute_dim1, a_total_dim0, a_total_dim1 = a_cfg
+    b_cfg = gen_random_dimensions()
+    b_compute_dim0, _, b_total_dim0, _ = b_cfg
+    return {
+        "A_TOTAL_DIM0": a_total_dim0,
+        "A_TOTAL_DIM1": a_total_dim1,
+        "B_TOTAL_DIM0": b_total_dim0,
+        "B_TOTAL_DIM1": a_total_dim0,  # Must equal A_TOTAL_DIM0
+        "A_COMPUTE_DIM0": a_compute_dim0,
+        "A_COMPUTE_DIM1": a_compute_dim1,
+        "B_COMPUTE_DIM0": b_compute_dim0,
+        "B_COMPUTE_DIM1": a_compute_dim0,  # Must equal A_COMPUTE_DIM0
+    }
+
+
+def generate_random_dimension_cfg(cfg_list, multiple=3):
+    new_cfgs = list()
+    for cfg in cfg_list:
+        new_cfgs.extend(
+            [{**cfg, **random_matrix_mult_dim_cfg()} for _ in range(multiple)]
         )
-        debug_state(dut, "Pre-clk")
-        await Timer(1, units="ns")
-        debug_state(dut, "Post-clk")
-        # dut.bias_valid.value, dut.bias.value = test_case.bias.compute(
-        #     dut.bias_ready.value
-        # )
-        dut.b_valid.value, dut.b_data.value = test_case.y.compute(
-            dut.b_ready.value
-        )
-        dut.a_valid.value, dut.a_data.value = test_case.x.compute(
-            dut.a_ready.value
-        )
-        await Timer(1, units="ns")
-        dut.out_ready.value = test_case.outputs.compute(
-            dut.out_valid.value, dut.out_data.value
-        )
-        # breakpoint()
-        debug_state(dut, "Pre-clk")
-        if (
-            test_case.y.is_empty()
-            and test_case.x.is_empty()
-            and test_case.outputs.is_full()
-        ):
-            done = True
-            break
-    assert (
-        done
-    ), "Deadlock detected or the simulation reaches the maximum cycle limit (fixed it by adjusting the loop trip count)"
-    check_results(test_case.outputs.data, test_case.ref)
+    return new_cfgs
+
+
+import pytest
+
+
+def test_matmul():
+    # Default is a square matrix mult
+    # 4x4 4x4 matrix multiplication done using 2x2 window
+    DEFAULT_CONFIG = {
+        "A_TOTAL_DIM0": 12*2,
+        "A_TOTAL_DIM1": 4*2,
+        "B_TOTAL_DIM0": 4*2,
+        "B_TOTAL_DIM1": 12*2,  # Must equal A_TOTAL_DIM0
+        "A_COMPUTE_DIM0": 12,
+        "A_COMPUTE_DIM1": 4,
+        "B_COMPUTE_DIM0": 4,
+        "B_COMPUTE_DIM1": 12,  # Must equal A_COMPUTE_DIM0
+        "A_WIDTH": 8,
+        "A_FRAC_WIDTH": 1,
+        "B_WIDTH": 8,
+        "B_FRAC_WIDTH": 1,
+        "OUT_WIDTH": 16,
+        "OUT_FRAC_WIDTH": 2,
+        "BLOCK_NUM": 4,
+        "SPARSE_BLOCK_NUM": 3
+    }
+
+    mase_runner(
+        module_param_list=[
+            # Default Square
+            DEFAULT_CONFIG,
+            # # Failing case before
+            # {
+            #     **DEFAULT_CONFIG,
+            #     "A_TOTAL_DIM0": 4,
+            #     "A_TOTAL_DIM1": 4,
+            #     "B_TOTAL_DIM0": 2,
+            #     "B_TOTAL_DIM1": 4,
+            #     "A_WIDTH": 4,
+            #     "A_FRAC_WIDTH": 1,
+            #     "B_WIDTH": 4,
+            #     "B_FRAC_WIDTH": 1,
+            #     "OUT_WIDTH": 8,
+            #     "OUT_FRAC_WIDTH": 1,
+            # },
+            # # Long Rectangle, should saturate many values
+            # {
+            #     **DEFAULT_CONFIG,
+            #     "A_TOTAL_DIM0": 16,
+            #     "A_TOTAL_DIM1": 2,
+            #     "B_TOTAL_DIM0": 2,
+            #     "B_TOTAL_DIM1": 16,
+            #     "OUT_WIDTH": 10,
+            #     "OUT_FRAC_WIDTH": 0,
+            # },
+            # # Change window to full size
+            # {
+            #     **DEFAULT_CONFIG,
+            #     "A_COMPUTE_DIM0": 4,
+            #     "A_COMPUTE_DIM1": 4,
+            #     "B_COMPUTE_DIM0": 4,
+            #     "B_COMPUTE_DIM1": 4,
+            # },
+            # # Dimensions
+            # *generate_random_dimension_cfg([DEFAULT_CONFIG]),
+        ],
+        trace=True,
+        jobs=12,
+    )
 
 
 if __name__ == "__main__":
-    tb = VerificationCase()
-    mase_runner(
-        module_param_list=[tb.get_dut_parameters()],
-        extra_build_args=["--unroll-count", "3000"],
-        trace=True
-    )
+    test_matmul()

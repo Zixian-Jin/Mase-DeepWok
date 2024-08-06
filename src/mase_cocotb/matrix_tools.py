@@ -1,5 +1,6 @@
 from copy import copy
 import logging
+import random
 
 import torch
 from torch import Tensor
@@ -128,3 +129,40 @@ def matrix_mult_model(
     return split_matrix(
         C_unsigned_rep, c_total_dim0, c_total_dim1, c_compute_dim0, c_compute_dim1
     )
+
+def gen_block_sparse_random_matrix_input(
+    total_dim0, total_dim1, compute_dim0, compute_dim1, width, frac_width, block_num, sparse_block_num
+):
+    x = (torch.rand(size=(total_dim1, total_dim0)) - 0.5) * 2
+    x *= 2 ** (width - frac_width - 1)
+    x = quantize_to_int(x, width, frac_width)
+    dense_matrices = split_matrix(x, total_dim0, total_dim1, compute_dim0, compute_dim1)
+    sparse_matrices = [block_sparsify_matrix(mat) for mat in dense_matrices]
+    return sparse_matrices
+
+def block_sparsify_matrix(x: Tensor, block_num, sparse_block_num):
+    '''
+        Transforms a dense matrix into a block-wise sparse one.
+        Sparsification is performed along each row
+    '''
+    row, col = x.shape
+    assert (col % block_num == 0), "col num is indivisible by block_num!"
+    block_size = int(col / block_num)
+    dense_block_num = block_num
+    
+    # Generate block-level mask
+    block_level_mask = torch.ones((row, block_num), dtype=bool)
+    for i in range(row):
+        # randomly pick sparse blocks
+        sparse_block_ids = torch.randperm(block_num)[:sparse_block_num]
+        for b_id in sparse_block_ids:   
+            block_level_mask[i][b_id] = False
+    
+    # Apply the mask
+    for i in range(row):
+        for bid in range(block_num):
+            if block_level_mask[i][bid] == False:
+                x[i][bid*block_size : (bid+1)*block_size] = 0
+    
+    return x
+            
