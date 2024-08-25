@@ -11,6 +11,7 @@ module block_router #(
     parameter IN_WIDTH = 16
 ) (
     input clk,
+    input rst,
     input [IN_BLOCK_NUM-1: 0] nonzero_sel,
     input [IN_WIDTH-1 :0] in_data [IN_BLOCK_NUM * BLOCK_SIZE -1 :0],
     input in_valid,

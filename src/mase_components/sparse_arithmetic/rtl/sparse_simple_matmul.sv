@@ -54,6 +54,19 @@ module sparse_simple_matmul #(
     input  logic                 out_ready
 );
 
+
+
+// Sparsity-related params
+localparam BLOCK_SIZE = M/BLOCK_NUM;
+localparam NONSPARSE_BLOCK_NUM = BLOCK_NUM - SPARSE_BLOCK_NUM;
+
+initial begin
+    assert (M % BLOCK_SIZE == 0) else
+        $fatal("M is not divisible!");
+end
+
+
+
 // Accumulator widths in linear layer
 localparam ACC_WIDTH = X_WIDTH + Y_WIDTH + $clog2(BLOCK_SIZE*NONSPARSE_BLOCK_NUM);
 localparam ACC_FRAC_WIDTH = X_FRAC_WIDTH + Y_FRAC_WIDTH;
@@ -69,14 +82,6 @@ initial begin
 end
 
 
-// Sparsity-related params
-localparam BLOCK_SIZE = M/BLOCK_NUM;
-localparam NONSPARSE_BLOCK_NUM = BLOCK_NUM - SPARSE_BLOCK_NUM;
-
-initial begin
-    assert (M % BLOCK_SIZE == 0) else
-        $fatal("M is not divisible!");
-end
 
 // N router_x
 logic sync_x_valid;     // broadcast to N router_x
@@ -107,6 +112,11 @@ for (genvar i = 0; i < N; i++) begin : multi_row
         logic [X_WIDTH-1:0] active_row_x [BLOCK_SIZE*NONSPARSE_BLOCK_NUM-1:0]; 
         logic active_row_x_valid, active_row_x_ready;
 
+        // Each `active_row_x` will be broadcast to `K` FDPs, 
+        // each FDP uses one wire of `fdp_in_active_row_x_ready`
+        logic [K-1:0] fdp_in_active_row_x_ready;
+        assign active_row_x_ready = & fdp_in_active_row_x_ready;
+
         // check sparsity for BLOCK_NUM blocks of current row in parallel
         nzc_group #(
             .IN_WIDTH (X_WIDTH),
@@ -125,6 +135,7 @@ for (genvar i = 0; i < N; i++) begin : multi_row
             .IN_WIDTH (X_WIDTH)
         ) router_row_x (
             .clk (clk),
+            .rst (rst),
             .nonzero_sel (nzc_flags),
             .in_data (row_x),
             .in_valid (sync_x_valid),
@@ -152,6 +163,7 @@ for (genvar i = 0; i < N; i++) begin : multi_row
             .IN_WIDTH (Y_WIDTH)
         ) router_col_y (
             .clk (clk),
+            .rst (rst),
             .nonzero_sel (nzc_flags),
             .in_data (col_y),
             .in_valid (sync_y_valid),
@@ -175,7 +187,7 @@ for (genvar i = 0; i < N; i++) begin : multi_row
             .rst                  (rst),
             .data_in              (active_row_x),
             .data_in_valid        (active_row_x_valid),
-            .data_in_ready        (active_row_x_ready),
+            .data_in_ready        (fdp_in_active_row_x_ready[j]),
             .weight               (active_col_y),
             .weight_valid         (active_col_y_valid),
             /* verilator lint_off PINCONNECTEMPTY */
