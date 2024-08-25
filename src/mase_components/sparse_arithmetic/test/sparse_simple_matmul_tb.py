@@ -256,6 +256,8 @@ def generate_random_widths():
 def test_simple_matmul():
     # Run tests with different params
     mase_runner(
+        trace=True,
+        skip_build=False,
         module_param_list=[
             {
                 "N": 4,

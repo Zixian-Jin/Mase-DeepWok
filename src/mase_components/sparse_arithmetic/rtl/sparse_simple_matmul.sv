@@ -78,20 +78,23 @@ initial begin
         $fatal("M is not divisible!");
 end
 
+// N router_x
+logic sync_x_valid;     // broadcast to N router_x
+logic [N-1:0] sync_x_ready; 
+// N*K router_y
+logic sync_y_valid;    // broadcast to N*K router_y
+logic [N*K-1:0] sync_y_ready;
 
-// Need to synchronise backpressure/valid signals
-// logic sync_valid, sync_ready;
-// join2 #() sync_handshake (
-//     .data_in_valid ({x_valid, y_valid}),
-//     .data_in_ready ({x_ready, y_ready}),
-//     .data_out_valid(sync_valid),
-//     .data_out_ready(sync_ready)
-// );
+assign sync_x_valid = x_valid;
+assign sync_y_valid = y_valid;
+assign x_ready = & sync_x_ready;
+assign y_ready = & sync_y_ready;
 
 
-logic [N*K-1:0] dot_product_ready;
-logic [N*K-1:0] dot_product_valid;
-assign dot_product_ready = {(N*K){out_ready}};
+
+logic [N*K-1:0] fdp_out_ready;
+logic [N*K-1:0] fdp_out_valid;
+
 
 generate
 for (genvar i = 0; i < N; i++) begin : multi_row
@@ -102,6 +105,7 @@ for (genvar i = 0; i < N; i++) begin : multi_row
 
         logic [BLOCK_NUM-1:0] nzc_flags;
         logic [X_WIDTH-1:0] active_row_x [BLOCK_SIZE*NONSPARSE_BLOCK_NUM-1:0]; 
+        logic active_row_x_valid, active_row_x_ready;
 
         // check sparsity for BLOCK_NUM blocks of current row in parallel
         nzc_group #(
@@ -114,15 +118,20 @@ for (genvar i = 0; i < N; i++) begin : multi_row
         );
 
         // route dense active_row_x from sparse row_x
-        mux_multi #(
+        block_router #(
             .IN_BLOCK_NUM (BLOCK_NUM),
             .BLOCK_SIZE (BLOCK_SIZE),
             .OUT_BLOCK_NUM (NONSPARSE_BLOCK_NUM),
             .IN_WIDTH (X_WIDTH)
-        ) mux_inst_row_x (
+        ) router_row_x (
+            .clk (clk),
             .nonzero_sel (nzc_flags),
-            .din (row_x),
-            .dout (active_row_x)
+            .in_data (row_x),
+            .in_valid (sync_x_valid),
+            .in_ready (sync_x_ready[i]),
+            .out_data (active_row_x),
+            .out_valid (active_row_x_valid),
+            .out_ready (active_row_x_ready)
         );
 
     for (genvar j = 0; j < K; j++) begin : multi_col
@@ -133,23 +142,29 @@ for (genvar i = 0; i < N; i++) begin : multi_row
         end
 
         logic [Y_WIDTH-1:0] active_col_y [BLOCK_SIZE*NONSPARSE_BLOCK_NUM-1:0];
+        logic active_col_y_valid, active_col_y_ready;
+
         // route dense active_col_y from sparse col_y
-        mux_multi #(
+        block_router #(
             .IN_BLOCK_NUM (BLOCK_NUM),
             .BLOCK_SIZE (BLOCK_SIZE),
             .OUT_BLOCK_NUM (NONSPARSE_BLOCK_NUM),
             .IN_WIDTH (Y_WIDTH)
-        ) mux_inst_col_y (
+        ) router_col_y (
+            .clk (clk),
             .nonzero_sel (nzc_flags),
-            .din (col_y),
-            .dout (active_col_y)
+            .in_data (col_y),
+            .in_valid (sync_y_valid),
+            .in_ready (sync_y_ready[i*K+j]),
+            .out_data (active_col_y),
+            .out_valid (active_col_y_valid),
+            .out_ready (active_col_y_ready)
         );
 
-        // Input ready signal
-        logic sync_ready;
+
 
         // Linear output
-        logic [ACC_WIDTH-1:0] dot_product_data_out;
+        logic [ACC_WIDTH-1:0] fdp_out_data;
 
         fixed_dot_product #(
             .IN_WIDTH             (X_WIDTH),
@@ -159,17 +174,17 @@ for (genvar i = 0; i < N; i++) begin : multi_row
             .clk                  (clk),
             .rst                  (rst),
             .data_in              (active_row_x),
-            .data_in_valid        (sync_valid),
-            .data_in_ready        (sync_ready),
+            .data_in_valid        (active_row_x_valid),
+            .data_in_ready        (active_row_x_ready),
             .weight               (active_col_y),
-            .weight_valid         (sync_valid),
+            .weight_valid         (active_col_y_valid),
             /* verilator lint_off PINCONNECTEMPTY */
             // This pin is the same as data_in_ready pin
-            .weight_ready         (),
+            .weight_ready         (active_col_y_ready),
             /* verilator lint_on PINCONNECTEMPTY */
-            .data_out             (dot_product_data_out),
-            .data_out_valid       (dot_product_valid[i*K+j]),
-            .data_out_ready       (dot_product_ready[i*K+j])
+            .data_out             (fdp_out_data),
+            .data_out_valid       (fdp_out_valid[i*K+j]),
+            .data_out_ready       (fdp_out_ready[i*K+j])
         );
 
         if (OUTPUT_ROUNDING) begin : rounding
@@ -181,29 +196,20 @@ for (genvar i = 0; i < N; i++) begin : multi_row
                 .OUT_WIDTH            (OUT_WIDTH),
                 .OUT_FRAC_WIDTH       (OUT_FRAC_WIDTH)
             ) round_inst (
-                .data_in              (dot_product_data_out),
+                .data_in              (fdp_out_data),
                 .data_out             (rounded_dot_product)
             );
             assign out_data[i*K+j] = rounded_dot_product;
         end else begin : no_rounding
-            assign out_data[i*K+j] = dot_product_data_out;
+            assign out_data[i*K+j] = fdp_out_data;
         end
 
     end
 end
 endgenerate
 
-// Need to synchronise backpressure/valid signals
-logic sync_valid, join_sync_ready;
-assign join_sync_ready = multi_row[0].multi_col[0].sync_ready;
 
-join2 #() sync_handshake (
-    .data_in_valid ({x_valid, y_valid}),
-    .data_in_ready ({x_ready, y_ready}),
-    .data_out_valid(sync_valid),
-    .data_out_ready(join_sync_ready)
-);
-
-assign out_valid = &dot_product_valid;
+assign out_valid = &fdp_out_valid;
+assign fdp_out_ready = {(N*K){out_ready}};
 
 endmodule
