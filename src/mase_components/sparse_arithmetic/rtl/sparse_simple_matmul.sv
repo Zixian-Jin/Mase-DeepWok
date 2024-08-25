@@ -90,10 +90,27 @@ logic [N-1:0] sync_x_ready;
 logic sync_y_valid;    // broadcast to N*K router_y
 logic [N*K-1:0] sync_y_ready;
 
-assign sync_x_valid = x_valid;
-assign sync_y_valid = y_valid;
-assign x_ready = & sync_x_ready;
-assign y_ready = & sync_y_ready;
+
+logic inputs_valid, inputs_ready;
+// NOTE: this `join2` module ensures x_data & y_data
+// are fed in and processed in lockstep.
+// TODO: alternatively, delete the join2 and split2 modules,
+// put a join2 in EVERY router_y instances, which is 
+// more hierarchical but consumes more resource.
+
+join2 inputs_join (
+    .data_in_valid ({x_valid, y_valid}),
+    .data_in_ready ({x_ready, y_ready}),
+    .data_out_valid(inputs_valid),
+    .data_out_ready(inputs_ready)
+);
+
+split2 inputs_split (
+    .data_in_valid (inputs_valid),
+    .data_in_ready (inputs_ready),
+    .data_out_valid ({sync_x_valid, sync_y_valid}),
+    .data_out_ready ({&sync_x_ready, &sync_y_ready})
+);
 
 
 
