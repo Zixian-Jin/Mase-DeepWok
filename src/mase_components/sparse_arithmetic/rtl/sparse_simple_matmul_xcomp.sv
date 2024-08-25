@@ -32,9 +32,11 @@ module sparse_simple_matmul_xcomp #(
     parameter OUT_WIDTH            = 16,
     parameter OUT_FRAC_WIDTH       = 0,
 
+    // Sparsity-related params
     parameter BLOCK_NUM            = 2,   
     parameter SPARSE_BLOCK_NUM     = 1,
     localparam DENSE_BLOCK_NUM = BLOCK_NUM - SPARSE_BLOCK_NUM,
+    localparam BLOCK_SIZE = M/BLOCK_NUM,
     localparam M_DENSE             = DENSE_BLOCK_NUM * BLOCK_SIZE
 ) (
     input  logic                 clk,
@@ -60,8 +62,7 @@ module sparse_simple_matmul_xcomp #(
 
 
 
-// Sparsity-related params
-localparam BLOCK_SIZE = M/BLOCK_NUM;
+
 
 initial begin
     assert (M % BLOCK_SIZE == 0) else
@@ -130,6 +131,9 @@ for (genvar i = 0; i < N; i++) begin : multi_row
 
         assign active_row_x = x_data[(i+1)*M_DENSE-1 : i*M_DENSE];
 
+        // TODO: optimisation needed
+        assign active_row_x_valid = sync_x_valid;
+        assign sync_x_ready[i] = active_row_x_ready;
         
         // Each `active_row_x` will be broadcast to `K` FDPs, 
         // each FDP uses one wire of `fdp_in_active_row_x_ready`
@@ -157,7 +161,7 @@ for (genvar i = 0; i < N; i++) begin : multi_row
             .rst (rst),
             .nonzero_sel (x_nzc_flags),
             .in_data (col_y),
-            .in_valid (sync_y_valid),
+            .in_valid (1'b1),
             .in_ready (sync_y_ready[i*K+j]),
             .out_data (active_col_y),
             .out_valid (active_col_y_valid),
