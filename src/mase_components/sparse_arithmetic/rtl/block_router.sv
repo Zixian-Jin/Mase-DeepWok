@@ -20,6 +20,13 @@ module block_router #(
     output out_valid,
     input out_ready
 );
+
+    initial begin
+        assert (IN_BLOCK_NUM >= OUT_BLOCK_NUM)
+            else $fatal("OUT_BLOCK_NUM must be no larger than IN_BLOCK_NUM!");
+    end
+
+    
     logic [IN_WIDTH-1 :0] reg_out [OUT_BLOCK_NUM * BLOCK_SIZE-1 :0];
     integer i, j, nonzero_block_id;
 
